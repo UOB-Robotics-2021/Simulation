@@ -1,0 +1,7 @@
+{
+  "swingConfig" : {
+    "topPosition" : [300, 300],
+    "jointLocations" : [[0, 200]],
+    "jointMasses" : [10]
+  }
+}
