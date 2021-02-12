@@ -3,5 +3,12 @@
     "topPosition" : [300, 150],
     "jointLocations" : [[0, 50], [0, 100], [0, 150], [0, 200]],
     "jointMasses" : [1, 1, 1, 10]
+  },
+  "variablePendulumConfig" : {
+      "flywheelRadius": 20,
+      "flywheelMass": 10,
+      "flywheelInitialPosition": [250, 0],
+      "pivotPosition": [350, 100], 
+      "gravity": [0, 10]
   }
 }
