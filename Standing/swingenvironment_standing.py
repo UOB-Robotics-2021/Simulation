@@ -79,9 +79,24 @@ class Swing():
         return self.objects['pivots'][num]
 
     def moveDirection(self, middleIndex, endIndex):
+        '''
+        Calculates the vector which dictates the direction in which the middle mass should move.
+        '''
         return (self.getJointByNumber(endIndex).position - self.getJointByNumber(middleIndex).position)
             
     def moveBody(self, middleIndex, endIndex, dirMultiplier=0.1, minLength=10, maxLength=150):
+        '''
+        The middle mass is middleIndex, and top or bottom pivot is endIndex. The speed at which the mass moves
+        is controlled with dirMultiplier, and minLength and maxLength sets the limits on how far the mass can
+        move, but maxLength may not be needed.
+
+        The code which has been commented out is used to remove and remake the rods, but currently throws an error.
+        Fixing the error might make for better performance.
+
+        Further comments: Spamming the down key causes the swing to go crazy and start spinning lots, this was meant
+        to be stopped by applying a minLength but this does not seem to currently work. Additionally, the seat can
+        spin around the person, so this could potentially be looked into as it is unphysical.
+        '''
         moveDistance = self.moveDirection(middleIndex, endIndex) * dirMultiplier
         tempPos = self.getJointByNumber(middleIndex).position + moveDistance
         distance = (abs(self.getJointByNumber(endIndex).position) - abs(tempPos) * -1)**0.5
