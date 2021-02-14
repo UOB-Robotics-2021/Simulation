@@ -47,6 +47,9 @@ class Swing():
 
         joints = [] # list of [body, shape]
         pivots = []
+
+        joints.append([top, top_shape])
+
         for i, j in zip(config['jointLocations'], config['jointMasses']):
             '''
             Iterate through the list of coordinates as specified by jointLocations,
@@ -71,6 +74,24 @@ class Swing():
 
     def getJointByNumber(self, num):
         return self.objects['rod'][num][0]
+
+    def getPivotByNumber(self, num):
+        return self.objects['pivots'][num]
+
+    def moveDirection(self, middleIndex, endIndex):
+        return (self.getJointByNumber(endIndex).position - self.getJointByNumber(middleIndex).position)
+            
+    def moveBody(self, middleIndex, endIndex, dirMultiplier=0.1, minLength=10, maxLength=150):
+        moveDistance = self.moveDirection(middleIndex, endIndex) * dirMultiplier
+        tempPos = self.getJointByNumber(middleIndex).position + moveDistance
+        distance = (abs(self.getJointByNumber(endIndex).position) - abs(tempPos) * -1)**0.5
+        print(distance)
+        if distance > minLength and distance < maxLength:
+            #space.remove(self.objects['pivots'], endIndex)
+            self.getJointByNumber(middleIndex).position += moveDistance
+            #pivot = pymunk.PinJoint(self.getJointByNumber(middleIndex), self.getJointByNumber(endIndex))
+            #self.objects['pivots'][endIndex] = pivot
+            #space.add(pivot)
 
     def render(self, screen):
         pass
@@ -100,11 +121,11 @@ while running:
             running = False
     keys = pygame.key.get_pressed()
     if keys[pygame.K_UP]:
-        print("applying impulse to +ve x at the final joint")
-        swing.getJointByNumber(-1).apply_impulse_at_local_point(swing.getJointByNumber(-1).mass*Vec2d(10,0))
+        print("Moving mass UP")
+        swing.moveBody(1, 0)
     elif keys[pygame.K_DOWN]:
-        print("applying impulse to -ve x at the final joint")
-        swing.getJointByNumber(-1).apply_impulse_at_local_point(swing.getJointByNumber(-1).mass*Vec2d(-10,0))
+        print("Moving mass DOWN")
+        swing.moveBody(1, -1)
     data.append((pygame.time.get_ticks(), swing.getJointByNumber(-1).velocity.x, swing.getJointByNumber(-1).velocity.y))
     space.step(1/60)
     screen.fill((255,255,255))
