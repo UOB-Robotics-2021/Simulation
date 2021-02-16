@@ -34,12 +34,15 @@ body.position = config["flywheelInitialPosition"]
 circle = pymunk.Circle(body, radius=config["flywheelRadius"])
 
 #Create joints
-joint = pymunk.PinJoint(space.static_body, body, config["pivotPosition"])
+joint = pymunk.SlideJoint(space.static_body, body, config["pivotPosition"], [0, 0], config["minPendulumLength"], config["maxPendulumLength"])
+#joint = pymunk.PinJoint(space.static_body, body, config["pivotPosition"])
+#joint = pymunk.PinJoint(space.static_body, body,[300,50], [0, 0])
+
 space.add(body, circle, joint)
 
 #Initialize Simulation
 pygame.init()
-screen_size = 700, 240
+screen_size = 600, 500
 screen = pygame.display.set_mode(screen_size)
 draw_options = pymunk.pygame_util.DrawOptions(screen)
 running = True
@@ -47,7 +50,9 @@ clock = pygame.time.Clock()
 
 #Main Simulation loop
 running = True 
+upkey_pressed = 0
 while running:
+    print(body.angle)
     clock.tick(60)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -57,32 +62,35 @@ while running:
         keys = pygame.key.get_pressed()
         
         #Controls 
-        
+
         #Rotate flywheel clockwise when right arrow pressed
         if keys[pygame.K_RIGHT]: 
             print(body.angular_velocity)
             
             #Applies right-impulse to top of flywheel
-            top = body.position[1] + 20
-            body.apply_impulse_at_local_point([-20,0], pymunk.Vec2d(body.position[0], top))
-    
+            top = body.position[1] + config["flywheelRadius"]
+            body.apply_impulse_at_local_point([-config["flywheelRadius"],0], pymunk.Vec2d(body.position[0], top))
         #Rotate flywheel counter-clockwise when left arrow pressed
         elif keys[pygame.K_LEFT]: 
-            
-            print(body.angular_velocity)
-            
             #Applies left-impulse to top of flywheel
-            top = body.position[1] + 20
-            body.apply_impulse_at_local_point([20,0], pymunk.Vec2d(body.position[0], top))
-    
+            top = body.position[1] + config["flywheelRadius"]
+            body.apply_impulse_at_local_point([config["flywheelRadius"],0], pymunk.Vec2d(body.position[0], top))
         elif keys[pygame.K_UP]: #Up arrow
-            print("Up key pressed")
+            #Applies impulse torwards pivot
+            v = (pymunk.Vec2d(body.position[0], body.position[1])- pymunk.Vec2d(300, 50))
+            body.apply_impulse_at_local_point(v,  v)
         elif keys[pygame.K_DOWN]: #Down arrow
-            print("Down key pressed")
-
+            #Applies impulse away from pivot
+            v = (pymunk.Vec2d(body.position[0], body.position[1])- pymunk.Vec2d(300, 50))
+            body.apply_impulse_at_local_point(v, -v)
+        elif keys[pygame.K_SPACE]: #Down arrow
+            #Resets spinning
+            body.angular_velocity = 0
+            
     screen.fill(GRAY)
     space.debug_draw(draw_options)
     pygame.display.update()
-    space.step(0.01)
+    #space.step(0.01)
+    space.step(0.1)
 
 pygame.quit()

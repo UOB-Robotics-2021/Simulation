@@ -7,8 +7,10 @@
   "variablePendulumConfig" : {
       "flywheelRadius": 20,
       "flywheelMass": 10,
-      "flywheelInitialPosition": [250, 0],
-      "pivotPosition": [350, 100], 
+      "pivotPosition": [300, 50], 
+      "flywheelInitialPosition": [300, 350],
+      "maxPendulumLength": 300,
+      "minPendulumLength": 0,
       "gravity": [0, 10]
   }
 }
