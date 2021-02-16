@@ -11,6 +11,6 @@
       "flywheelInitialPosition": [300, 350],
       "maxPendulumLength": 300,
       "minPendulumLength": 0,
-      "gravity": [0, 10]
+      "g": 980
   }
 }
