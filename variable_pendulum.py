@@ -32,7 +32,7 @@ moment_of_inertia = 0.25*config["flywheelMass"]*config["flywheelRadius"]**2
 body = pymunk.Body(mass=config["flywheelMass"], moment=moment_of_inertia)
 body.position = config["flywheelInitialPosition"]
 circle = pymunk.Circle(body, radius=config["flywheelRadius"])
-
+circle.friction = 90000
 #Create joints
 joint = pymunk.PinJoint(space.static_body, body, config["pivotPosition"])
 
@@ -75,12 +75,16 @@ while running:
             body.apply_impulse_at_local_point([config["g"],0], pymunk.Vec2d(body.position[0], top))
         elif keys[pygame.K_UP]: #Up arrow
             #Shortens pendulum
-            joint.distance = 250
+            if joint.distance == config["minPendulumLength"]:
+                print("Pendulum already at minimum length")
+            joint.distance = config["minPendulumLength"]
         elif keys[pygame.K_DOWN]: #Down arrow
             #Lengtens pendulum
-            joint.distance = 350
+            if joint.distance == config["maxPendulumLength"]:
+                print("Pendulum already at maxmimum length")
+            joint.distance = config["maxPendulumLength"]
         elif keys[pygame.K_i]: #i key
-            #Resets spinning
+            #Prints information
             print("Pendulum length: ", joint.distance) 
             print("Angular velocity: ", body.angular_velocity)
             print("Position: ", body.position)

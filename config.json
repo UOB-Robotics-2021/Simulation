@@ -9,8 +9,8 @@
       "flywheelMass": 10,
       "pivotPosition": [300, 50], 
       "flywheelInitialPosition": [300, 350],
-      "maxPendulumLength": 300,
-      "minPendulumLength": 0,
+      "maxPendulumLength": 350,
+      "minPendulumLength": 250,
       "g": 980
   }
 }
