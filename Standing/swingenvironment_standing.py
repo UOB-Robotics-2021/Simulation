@@ -129,7 +129,7 @@ class LearningArea():
     def __init__(self, configFile):
         pass
 
-config = loadConfig('config_standing.json')
+config = loadConfig('Standing\\config_standing.json')
 
 swing = Swing(space, config['swingConfig'])
 
