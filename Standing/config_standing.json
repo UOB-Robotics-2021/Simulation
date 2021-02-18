@@ -1,14 +1,7 @@
 {
   "swingConfig" : {
     "topPosition" : [300, 150],
-    "jointLocations" : [[50, 100], [100, 200]],
-    "jointMasses" : [10, 3]
-  },
-  "variablePendulumConfig" : {
-      "flywheelRadius": 20,
-      "flywheelMass": 10,
-      "flywheelInitialPosition": [250, 0],
-      "pivotPosition": [350, 100], 
-      "gravity": [0, 10]
+    "jointLocations" : [[0, 100], [0, 200]],
+    "jointMasses" : [20, 10]
   }
 }

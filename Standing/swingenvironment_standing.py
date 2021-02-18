@@ -100,13 +100,19 @@ class Swing():
         moveDistance = self.moveDirection(middleIndex, endIndex) * dirMultiplier
         tempPos = self.getJointByNumber(middleIndex).position + moveDistance
         distance = (abs(self.getJointByNumber(endIndex).position) - abs(tempPos) * -1)**0.5
-        print(distance)
+
         if distance > minLength and distance < maxLength:
             #space.remove(self.objects['pivots'], endIndex)
             self.getJointByNumber(middleIndex).position += moveDistance
             #pivot = pymunk.PinJoint(self.getJointByNumber(middleIndex), self.getJointByNumber(endIndex))
             #self.objects['pivots'][endIndex] = pivot
             #space.add(pivot)
+
+    def moveUp(self):
+        swing.moveBody(1, 0)
+
+    def moveDown(self):
+        swing.moveBody(1, -1)
 
     def render(self, screen):
         pass
@@ -123,7 +129,7 @@ class LearningArea():
     def __init__(self, configFile):
         pass
 
-config = loadConfig('config_standing.json')
+config = loadConfig('Standing\\config_standing.json')
 
 swing = Swing(space, config['swingConfig'])
 
@@ -137,10 +143,16 @@ while running:
     keys = pygame.key.get_pressed()
     if keys[pygame.K_UP]:
         print("Moving mass UP")
-        swing.moveBody(1, 0)
+        swing.moveUp()
     elif keys[pygame.K_DOWN]:
         print("Moving mass DOWN")
-        swing.moveBody(1, -1)
+        swing.moveDown()
+    elif keys[pygame.K_LEFT]:
+        print("Pushing legs LEFT")
+        swing.getJointByNumber(-1).apply_impulse_at_local_point(swing.getJointByNumber(-1).mass*Vec2d(-10,0))
+    elif keys[pygame.K_RIGHT]:
+        print("Pushing legs LEFT")
+        swing.getJointByNumber(-1).apply_impulse_at_local_point(swing.getJointByNumber(-1).mass*Vec2d(10,0))
     data.append((pygame.time.get_ticks(), swing.getJointByNumber(-1).velocity.x, swing.getJointByNumber(-1).velocity.y))
     space.step(1/60)
     screen.fill((255,255,255))
