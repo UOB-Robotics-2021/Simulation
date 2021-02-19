@@ -12,5 +12,16 @@
       "maxPendulumLength": 350,
       "minPendulumLength": 250,
       "g": 980
+  },
+  "squatStandConfig" : {
+      "g": 0,
+      "screenSize": [600, 500],
+      "anklePosition": [200, 120],
+      "footVector": [20, 0],
+      "footMass": 2,
+      "lowerLegVector": [40, -20],
+      "lowerLegMass": 10,
+      "upperLegVector": [-80, 0],
+      "upperLegMass": 20
   }
 }
