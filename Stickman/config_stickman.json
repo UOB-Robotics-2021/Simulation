@@ -1,0 +1,15 @@
+{
+  "squatStandConfig" : {
+      "g": 0,
+      "screenSize": [600, 500],
+      "anklePosition": [200, 120],
+      "foot":  [0, 22, 2],
+      "lowerLeg":  [-90, 44, 10],
+      "upperLeg": [-90, 48, 20],
+      "torso": [-90, 80, 20],
+      "neck": [-90, 13, 3],
+      "upperArm": [50, 35, 6],
+      "lowerArm": [-30, 26, 6],
+      "head": [10, 5]
+  }
+}

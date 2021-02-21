@@ -8,6 +8,8 @@ from pymunk.vec2d import Vec2d
 
 from pygame.locals import *
 
+import numpy as np
+
 #Custom functions
 def loadConfig(configFile):
 
@@ -19,7 +21,7 @@ def loadConfig(configFile):
 def vector_sum(a1, a2):
     return [(a1[0]+a2[0]), (a1[1]+a2[1])]
 
-config = loadConfig('config.json')["squatStandConfig"]
+config = loadConfig('config_stickman.json')["squatStandConfig"]
 
 #Set-up environment
 space = pymunk.Space()
@@ -41,60 +43,11 @@ class PinJoint:
         joint = pymunk.PinJoint(b, b2, a, a2)
         space.add(joint)
 
-
 class PivotJoint:
     def __init__(self, b, b2, a=(0, 0), a2=(0, 0), collide=True):
         joint = pymunk.PinJoint(b, b2, a, a2)
         joint.collide_bodies = collide
         space.add(joint)
-
-
-class SlideJoint:
-    def __init__(self, b, b2, a=(0, 0), a2=(0, 0), min=50, max=100, collide=True):
-        joint = pymunk.SlideJoint(b, b2, a, a2, min, max)
-        joint.collide_bodies = collide
-        space.add(joint)
-
-
-class GrooveJoint:
-    def __init__(self, a, b, groove_a, groove_b, anchor_b):
-        joint = pymunk.GrooveJoint(
-            a, b, groove_a, groove_b, anchor_b)
-        joint.collide_bodies = False
-        space.add(joint)
-
-
-class DampedRotarySpring:
-    def __init__(self, b, b2, angle, stiffness, damping):
-        joint = pymunk.DampedRotarySpring(
-            b, b2, angle, stiffness, damping)
-        space.add(joint)
-
-
-class RotaryLimitJoint:
-    def __init__(self, b, b2, min, max, collide=True):
-        joint = pymunk.RotaryLimitJoint(b, b2, min, max)
-        joint.collide_bodies = collide
-        space.add(joint)
-
-
-class RatchetJoint:
-    def __init__(self, b, b2, phase, ratchet):
-        joint = pymunk.GearJoint(b, b2, phase, ratchet)
-        space.add(joint)
-
-
-class SimpleMotor:
-    def __init__(self, b, b2, rate):
-        joint = pymunk.SimpleMotor(b, b2, rate)
-        space.add(joint)
-
-
-class GearJoint:
-    def __init__(self, b, b2, phase, ratio):
-        joint = pymunk.GearJoint(b, b2, phase, ratio)
-        space.add(joint)
-
 
 class Segment:
     def __init__(self, p0, v, m=10, radius=2):
@@ -118,45 +71,6 @@ class Circle:
         shape.friction = 0.5
         shape.elasticity = 1
         space.add(self.body, shape)
-
-
-class Box:
-    def __init__(self, p0=(0, 0), p1=(w, h), d=4):
-        x0, y0 = p0
-        x1, y1 = p1
-        pts = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-        for i in range(4):
-            segment = pymunk.Segment(
-                space.static_body, pts[i], pts[(i+1) % 4], d)
-            segment.elasticity = 1
-            segment.friction = 0.5
-            space.add(segment)
-
-
-class Poly:
-    def __init__(self, pos, vertices):
-        self.body = pymunk.Body(1, 100)
-        self.body.position = pos
-
-        shape = pymunk.Poly(self.body, vertices)
-        shape.filter = pymunk.ShapeFilter(group=1)
-        shape.density = 0.01
-        shape.elasticity = 0.5
-        shape.color = (255, 0, 0, 0)
-        space.add(self.body, shape)
-
-
-class Rectangle:
-    def __init__(self, pos, size=(80, 50)):
-        self.body = pymunk.Body()
-        self.body.position = pos
-
-        shape = pymunk.Poly.create_box(self.body, size)
-        shape.density = 0.1
-        shape.elasticity = 1
-        shape.friction = 1
-        space.add(self.body, shape)
-
 
 class App:
     def __init__(self):
@@ -227,13 +141,60 @@ class App:
                 self.images = []
 
 #Code to generate figure
-            
-foot = Segment(config["anklePosition"], config["footVector"], config["footMass"])
-lower_leg = Segment(config["anklePosition"], config["lowerLegVector"], config["lowerLegMass"])
-ankle = PivotJoint(foot.body, lower_leg.body, (0,0))
-knee_position = vector_sum(config["anklePosition"], config["lowerLegVector"])
-upper_leg = Segment(knee_position, config["upperLegVector"], config["upperLegMass"])
-knee = PivotJoint(lower_leg.body, upper_leg.body, config["lowerLegVector"])
-#print(list(foot.body.shapes)[0]) #Access foot shape
+class Stickman:
+    def __init__(self, x, y, theta=0, scale=1):
+        # In the json file, the format for limbs is --> "limb": [angle, length, mass].
+        # The head has format --> "head": [radius, mass]
+        self.offset = Vec2d(x, y) # Allows you to move the stickman around
+        anklePosition = config["anklePosition"] + self.offset
 
+        footVector = self.dirVec("foot", theta, scale)
+        self.foot = Segment(anklePosition, footVector, self.limbMass("foot"))
+
+        lowerLegVector = self.dirVec("lowerLeg", theta, scale)
+        self.lowerLeg = Segment(anklePosition, lowerLegVector, self.limbMass("lowerLeg"))
+        self.ankle = PivotJoint(self.foot.body, self.lowerLeg.body, (0,0))
+
+        kneePosition = vector_sum(anklePosition, lowerLegVector)
+
+        upperLegVector = self.dirVec("upperLeg", theta, scale)
+        self.upperLeg = Segment(kneePosition, upperLegVector, self.limbMass("upperLeg"))
+        self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, lowerLegVector)
+
+        pelvisPosition = vector_sum(kneePosition, upperLegVector)
+        
+        torsoVector = self.dirVec("torso", theta, scale)
+        self.torso = Segment(pelvisPosition, torsoVector, self.limbMass("torso"))
+        self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, upperLegVector)
+
+        shoulderPosition = vector_sum(pelvisPosition, torsoVector)
+
+        neckVector = self.dirVec("neck", theta, scale)
+        self.neck = Segment(shoulderPosition, neckVector, self.limbMass("neck"))
+        self.shoulderNeck = PivotJoint(self.torso.body, self.neck.body, torsoVector)
+
+        upperArmVector = self.dirVec("upperArm", theta, scale)
+        self.upperArm = Segment(shoulderPosition, upperArmVector, self.limbMass("upperArm"))
+        self.shoulderArm = PivotJoint(self.torso.body, self.upperArm.body, torsoVector)
+
+        elbowPosition = vector_sum(shoulderPosition, upperArmVector)
+
+        lowerArmVector = self.dirVec("lowerArm", theta, scale)
+        self.lowerArm = Segment(elbowPosition, lowerArmVector, self.limbMass("lowerArm"))
+        self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, upperArmVector)
+
+        headRadius = config["head"][0]
+        headPosition = shoulderPosition + neckVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
+        self.head = Circle(headPosition, headRadius)
+        self.headJoint = PivotJoint(self.neck.body, self.head.body, neckVector)
+
+
+    def dirVec(self, limb, rotation, scale):
+        angle = config[limb][0] + rotation
+        return scale * config[limb][1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
+    
+    def limbMass(self, limb):
+        return config[limb][2]
+
+man = Stickman(x=150, y=250, theta=0, scale=1)
 App().run()
