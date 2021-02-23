@@ -1,8 +1,9 @@
 {
   "ExpandedNodes": [
     "",
-    "\\Standing"
+    "\\Standing",
+    "\\Stickman"
   ],
-  "SelectedNode": "\\squat_stand.py",
+  "SelectedNode": "\\Standing\\swingenvironment_standsquat.py",
   "PreviewInSolutionExplorer": false
 }

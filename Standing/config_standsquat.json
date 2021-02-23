@@ -1,0 +1,21 @@
+{
+  "swingConfig": {
+    "topPosition": [ 300, 150 ],
+    "jointLocations": [
+      [ 0, 100 ],
+      [ 0, 200 ]
+    ],
+    "jointMasses": [ 20, 10 ]
+  },
+  "squatStandConfig": {
+    "anklePosition": [ 0, 0 ],
+    "foot": [ 0, 22, 2 ],
+    "lowerLeg": [ -90, 44, 10 ],
+    "upperLeg": [ -90, 48, 20 ],
+    "torso": [ -90, 65, 20 ],
+    "neck": [ -90, 13, 3 ],
+    "upperArm": [ 50, 35, 6 ],
+    "lowerArm": [ -30, 26, 6 ],
+    "head": [ 10, 5 ]
+  }
+}
