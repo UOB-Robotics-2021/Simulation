@@ -169,13 +169,13 @@ class Stickman:
 
         shoulderPosition = vector_sum(pelvisPosition, torsoVector)
 
-        neckVector = self.dirVec("neck", theta, scale)
-        self.neck = Segment(shoulderPosition, neckVector, self.limbMass("neck"))
-        self.shoulderNeck = PivotJoint(self.torso.body, self.neck.body, torsoVector)
+        #neckVector = self.dirVec("neck", theta, scale)
+        #self.neck = Segment(shoulderPosition, neckVector, self.limbMass("neck"))
+        #self.shoulderNeck = PivotJoint(self.torso.body, self.neck.body, torsoVector)
 
         upperArmVector = self.dirVec("upperArm", theta, scale)
         self.upperArm = Segment(shoulderPosition, upperArmVector, self.limbMass("upperArm"))
-        self.shoulderArm = PivotJoint(self.torso.body, self.upperArm.body, torsoVector)
+        self.shoulder = PivotJoint(self.torso.body, self.upperArm.body, torsoVector)
 
         elbowPosition = vector_sum(shoulderPosition, upperArmVector)
 
@@ -184,9 +184,9 @@ class Stickman:
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, upperArmVector)
 
         headRadius = config["head"][0]
-        headPosition = shoulderPosition + neckVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
+        headPosition = shoulderPosition + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
         self.head = Circle(headPosition, headRadius)
-        self.headJoint = PivotJoint(self.neck.body, self.head.body, neckVector)
+        self.headJoint = PivotJoint(self.torso.body, self.head.body, torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
 
 
     def dirVec(self, limb, rotation, scale):
