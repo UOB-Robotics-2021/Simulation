@@ -1,0 +1,46 @@
+{
+  "swingConfig" : {
+    "topPosition" : [300, 150],
+    "jointLocations" : [[0, 50], [0, 100], [0, 150], [0, 200]],
+    "jointMasses" : [1, 1, 1, 10]
+  },
+  "swingWithPersonConfig" : {
+    "topPosition" : [300, 300],
+    "jointLocations" : [[10, 200]],
+    "jointMasses" : [1],
+	"person" : 10
+  },
+  "variablePendulumConfig" : {
+      "flywheelRadius": 20,
+      "flywheelMass": 10,
+      "pivotPosition": [300, 50], 
+      "flywheelInitialPosition": [300, 350],
+      "maxPendulumLength": 350,
+      "minPendulumLength": 250,
+      "g": 980
+  },
+  "variablePendulumMLConfig" : {
+      "flywheelRadius": 20,
+      "flywheelMass": 10,
+      "pivotPosition": [300, 50], 
+      "flywheelInitialPosition": [350, 350],
+      "maxPendulumLength": 350,
+      "minPendulumLength": 250,
+	  "populationSize": 100,
+	  "hiddenLayers": [1, 5],
+	  "initialNumSteps": 50,
+	  "numStepIncrement": 50,
+	  "mutationRate": 0.05
+  },
+  "squatStandConfig" : {
+      "g": 0,
+      "screenSize": [600, 500],
+      "anklePosition": [200, 120],
+      "footVector": [20, 0],
+      "footMass": 2,
+      "lowerLegVector": [40, -20],
+      "lowerLegMass": 10,
+      "upperLegVector": [-80, 0],
+      "upperLegMass": 20
+  }
+}
