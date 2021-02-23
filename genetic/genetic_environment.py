@@ -40,6 +40,7 @@ class LearningEnvironment():
         self.generation = 1
         self.prev_average_fitness = 0
         self.prev_champ_fitness = 0
+        self.champion_nn = None
         
         self.font = pygame.font.SysFont('Arial', 20)
 
@@ -79,6 +80,7 @@ class LearningEnvironment():
                 champion = i
         champion = copy.deepcopy(champion)
         champ_nn = champion.neuralnetwork
+        self.champion_nn = champ_nn
         
         champ_fitness = champion.calculateFitness()
         avg_fitness = running_sum/self.population_size
@@ -88,19 +90,27 @@ class LearningEnvironment():
         if self.generation % 10 == 0:
             self.num_actions += self.config['numStepIncrement']
 
-        # allow ~75% of the next population to be children of current models
-        for _ in range(int(self.population_size // (4/3))):
-            child = self.model(self.space, self.config, self.num_actions)
-            parent_nn = self.selectParent()
-            child.neuralnetwork = parent_nn
-            child.neuralnetwork.mutate(self.config['mutationRate'])
-            nextGen.append(child)
-
-        # the remaining ~25% are new random specimens to encourage variation in the population
-        for _ in range(self.population_size - len(nextGen)):
-            child = self.model(self.space, self.config, self.num_actions)
-            child.circle.colour = (255,0,0,255)
-            nextGen.append(child)
+        if self.prev_champ_fitness < 6:
+            # allow ~75% of the next population to be children of current models
+            for _ in range(int(self.population_size // (4/3))):
+                child = self.model(self.space, self.config, self.num_actions)
+                parent_nn = self.selectParent()
+                child.neuralnetwork = parent_nn
+                child.neuralnetwork.mutate(self.config['mutationRate'])
+                nextGen.append(child)
+    
+            # the remaining ~25% are new random specimens to encourage variation in the population
+            for _ in range(self.population_size - len(nextGen)):
+                child = self.model(self.space, self.config, self.num_actions)
+                child.circle.colour = (255,0,0,255)
+                nextGen.append(child)
+        else:
+            for _ in range(self.population_size):
+                child = self.model(self.space, self.config, self.num_actions)
+                parent_nn = self.selectParent()
+                child.neuralnetwork = parent_nn
+                child.neuralnetwork.mutate(self.config['mutationRate'])
+                nextGen.append(child)
 
         for i in self.population:
             i.destroyModel()
@@ -150,3 +160,5 @@ while running:
     pygame.display.flip()
     
     space.step(1/30)
+
+le.champion_nn.saveNN('variablePendulum')

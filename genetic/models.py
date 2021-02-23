@@ -71,7 +71,7 @@ class VariablePendulum():
             pass
     
     def checkMovable(self):
-        if self.action_step - self.last_action > 10:
+        if self.action_step - self.last_action > self.config['actionDelay']:
             self.movable = True
 
     def step(self, action):
@@ -86,7 +86,7 @@ class VariablePendulum():
             self.done = True
 
     def calculateFitness(self):
-        return (1+self.maximum_amplitude)**2
+        return (1+self.maximum_amplitude)**4
     
     def destroyModel(self):
         self.space.remove(self.body, self.circle, self.joint)
