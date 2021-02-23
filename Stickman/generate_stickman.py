@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Feb 23 15:09:39 2021
+
+@author: remib
+"""
+
 #Import modules
 import pymunk
 import pygame
@@ -57,7 +64,7 @@ class Segment:
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
-        shape.filter = pymunk.ShapeFilter(group=1)
+        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         shape.color = (0, 255, 0, 0)
         space.add(self.body, shape)
 
@@ -67,13 +74,15 @@ class Circle:
         self.body = pymunk.Body()
         self.body.position = pos
         shape = pymunk.Circle(self.body, radius)
+        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
+        
         shape.density = 0.01
         shape.friction = 0.5
         shape.elasticity = 1
         space.add(self.body, shape)
 
 class App:
-    def __init__(self):
+    def __init__(self, man):
         pygame.init()
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode(size)
@@ -81,6 +90,7 @@ class App:
         self.running = True
         self.gif = 0
         self.images = []
+        self.stick_figure = man
 
     def run(self):
         while self.running:
@@ -140,12 +150,19 @@ class App:
                                     optimize=True, duration=1000//fps, loop=0)
                 self.images = []
 
+def CircleOrientation(p_i, v, r):
+    norm = (v[0]**2 + v[1]**2)**0.5
+    A = r/norm
+    dp = [v[0]*A, v[1]*A]
+    p = [(p_i[0]-dp[0]), (p_i[1]-dp[1])]
+    
 #Code to generate figure
 class Stickman:
     def __init__(self, x, y, theta=0, scale=1):
         # In the json file, the format for limbs is --> "limb": [angle, length, mass].
         # The head has format --> "head": [radius, mass]
         self.offset = Vec2d(x, y) # Allows you to move the stickman around
+        
         anklePosition = config["anklePosition"] + self.offset
 
         footVector = self.dirVec("foot", theta, scale)
@@ -169,25 +186,35 @@ class Stickman:
 
         shoulderPosition = vector_sum(pelvisPosition, torsoVector)
 
-        #neckVector = self.dirVec("neck", theta, scale)
-        #self.neck = Segment(shoulderPosition, neckVector, self.limbMass("neck"))
-        #self.shoulderNeck = PivotJoint(self.torso.body, self.neck.body, torsoVector)
-
         upperArmVector = self.dirVec("upperArm", theta, scale)
         self.upperArm = Segment(shoulderPosition, upperArmVector, self.limbMass("upperArm"))
         self.shoulder = PivotJoint(self.torso.body, self.upperArm.body, torsoVector)
 
         elbowPosition = vector_sum(shoulderPosition, upperArmVector)
-
+        
         lowerArmVector = self.dirVec("lowerArm", theta, scale)
         self.lowerArm = Segment(elbowPosition, lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, upperArmVector)
-
+        neckPosition = vector_sum(pelvisPosition, torsoVector)
+        
+        #Add neck
+        neckVector = self.dirVec("neck", theta, scale)
+        self.neck = Segment(neckPosition, neckVector, 10)
+        self.neckJoint = PivotJoint(self.upperArm.body, self.neck.body)
+        
+        #Add head
+        headPosition = vector_sum(neckPosition, neckVector)
         headRadius = config["head"][0]
-        headPosition = shoulderPosition + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
-        self.head = Circle(headPosition, headRadius)
-        self.headJoint = PivotJoint(self.torso.body, self.head.body, torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
-
+        
+        #Ensure head's center of gravity in line with neck
+        norm = (neckVector[0]**2 + neckVector[1]**2)**0.5
+        A = headRadius/norm
+        dp = [neckVector[0]*A, neckVector[1]*A]
+        headJointPosition = vector_sum(neckPosition, neckVector)
+        headPosition = [(headJointPosition[0]+dp[0]), (headJointPosition[1]+dp[1])]
+        
+        self.head = Circle(pos=headPosition, radius=headRadius)
+        self.headJoint = PinJoint(self.neck.body, self.head.body, neckVector)
 
     def dirVec(self, limb, rotation, scale):
         angle = config[limb][0] + rotation
@@ -197,4 +224,4 @@ class Stickman:
         return config[limb][2]
 
 man = Stickman(x=150, y=250, theta=0, scale=1)
-App().run()
+App(man).run()
