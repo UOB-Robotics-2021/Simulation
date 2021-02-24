@@ -2,6 +2,7 @@ import pygame
 import pymunk
 import pymunk.pygame_util
 from pymunk.vec2d import Vec2d
+
 import numpy as np
 import pandas as pd
 import math
@@ -22,14 +23,6 @@ def loadConfig(configFile):
         config = cfg.read()
 
     return json.loads(config)
-
-class Person():
-
-    def __init__(self):
-        pass
-
-    def generatePerson(self):
-        torso = pymunk.Body(10, 10)
 
 class Swing():
 
@@ -160,6 +153,7 @@ while running:
     pygame.display.flip()
 
     clock.tick(60)
+
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
 plt.plot(data)
