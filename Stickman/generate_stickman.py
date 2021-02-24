@@ -65,16 +65,25 @@ class PivotJoint:
         space.add(joint)
 
 class Segment:
-    def __init__(self, p0, v, m=10, radius=2):
-        self.body = pymunk.Body()
-        self.body.position = p0
-        shape = pymunk.Segment(self.body, (0, 0), v, radius)
+    def __init__(self, p0, v, m=10, radius=2, body=0):
+
+        if body == 0:
+            self.body = pymunk.Body()
+            self.body.position = p0
+            shape = pymunk.Segment(self.body, (0, 0), v, radius)
+        else:
+            print(body)
+            shape = pymunk.Segment(body, (0, 0), v, radius)
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
         shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         shape.color = (0, 255, 0, 0)
-        space.add(self.body, shape)
+        
+        if body == 0:
+            space.add(self.body, shape)
+        else:
+            space.add(shape)
 
 
 class Circle:
@@ -183,6 +192,7 @@ class Stickman:
         self.upperLeg = Segment(self.kneePosition, self.upperLegVector, self.limbMass("upperLeg"))
         self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, self.lowerLegVector)
         
+<<<<<<< Updated upstream
 
         
         self.pelvisPosition = vector_sum(self.kneePosition, self.upperLegVector)
@@ -190,9 +200,25 @@ class Stickman:
         self.torsoVector = self.dirVec("torso", theta, scale)
         self.torso = Segment(self.pelvisPosition, self.torsoVector, self.limbMass("torso"))
         self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, self.upperLegVector)
+=======
+        torsoVector = self.dirVec("torso", theta, scale)
+        self.torso = Segment(pelvisPosition, torsoVector, self.limbMass("torso"))
+        self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, upperLegVector)
+
+        shoulderPosition = vector_sum(pelvisPosition, torsoVector)
+        """
+        neckVector = self.dirVec("neck", theta, scale)
+        self.neck = Segment(shoulderPosition, neckVector, self.limbMass("neck"))
+        self.shoulderNeck = PivotJoint(self.torso.body, self.neck.body, torsoVector)
+        """
+        upperArmVector = self.dirVec("upperArm", theta, scale)
+        self.upperArm = Segment(shoulderPosition, upperArmVector, self.limbMass("upperArm"))
+        self.shoulderArm = PivotJoint(self.torso.body, self.upperArm.body, torsoVector)
+>>>>>>> Stashed changes
 
         self.shoulderPosition = vector_sum(self.pelvisPosition, self.torsoVector)
 
+<<<<<<< Updated upstream
         self.upperArmVector = self.dirVec("upperArm", theta, scale)
         self.upperArm = Segment(self.shoulderPosition, self.upperArmVector, self.limbMass("upperArm"))
         self.shoulder = PivotJoint(self.torso.body, self.upperArm.body, self.torsoVector)
@@ -226,6 +252,65 @@ class Stickman:
 
         self.stopped_at = 0
 
+=======
+        lowerArmVector = self.dirVec("lowerArm", theta, scale)
+        self.lowerArm = Segment(elbowPosition, lowerArmVector, self.limbMass("lowerArm"))
+        self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, upperArmVector)
+        
+        
+        
+        """
+        lowerLegVector = self.dirVec("lowerLeg", theta, scale)
+        self.lowerLeg = Segment(anklePosition, lowerLegVector, self.limbMass("lowerLeg"))
+        self.ankle = PivotJoint(self.foot.body, self.lowerLeg.body, (0,0))
+
+        kneePosition = vector_sum(anklePosition, lowerLegVector)
+
+        upperLegVector = self.dirVec("upperLeg", theta, scale)
+        self.upperLeg = Segment(kneePosition, upperLegVector, self.limbMass("upperLeg"))
+        self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, lowerLegVector)
+
+        pelvisPosition = vector_sum(kneePosition, upperLegVector)
+        """
+        print(dir(self.shoulderArm))
+        neckVector = self.dirVec("neck", theta, scale)
+        print(self.torso.body)
+        neckVector = [0, -100]
+        self.neck = Segment(shoulderPosition, neckVector, self.limbMass("neck"), body=self.torso.body)
+        headVector = [0, -200]
+        headPosition = vector_sum(shoulderPosition, neckVector)
+       
+        head = Segment(self.neck.body.position, headVector)
+        
+        #neckJointPosition[1] = neckJointPosition[1] - 20
+        #self.head = Circle(neckJointPosition, 20)
+        
+        #self.neckJoint = PivotJoint(self.torso.body, self.neck.body, lowerLegVector)
+        
+        headRadius = config["head"][0]
+        """
+        headPosition = shoulderPosition + neckVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
+        self.head = Circle(headPosition, headRadius)
+        self.headJoint = PivotJoint(self.neck.body, self.head.body, neckVector)
+        """
+        neckJointPosition = [300, 150]
+        
+       
+        neckVector = [0, 40]
+        self.neck = Segment(neckJointPosition, neckVector, 10)
+        
+        
+        
+        print(self.torso.body.position)
+        headVector = [0,200]
+        #self.head = Segment(neckJointPosition, headVector,20)
+        neckJointPosition[1] = neckJointPosition[1] - 20
+        self.head = Circle(neckJointPosition, 20)
+        self.neckJoint = PivotJoint(self.neck.body, self.head.body, (0,0))
+        
+        
+        
+>>>>>>> Stashed changes
     def dirVec(self, limb, rotation, scale):
         angle = config[limb][0] + rotation
         return scale * config[limb][1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
