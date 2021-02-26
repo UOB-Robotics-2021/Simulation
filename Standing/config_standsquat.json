@@ -1,4 +1,7 @@
 {
+  "environmentConfig": {
+    "gravity": [0, 900]
+  },
   "swingConfig": {
     "topPosition": [ 300, 150 ],
     "jointDistances": [100, 200],
@@ -14,5 +17,13 @@
     "upperArm": [ 70, 35, 6 ],
     "lowerArm": [ 0, 0, 6 ],
     "head": [ 10, 5 ]
+  },
+  "jointConstraints": {
+     "pelvisFlexion": 120,
+     "kneeFlexion": 130,
+     "shoulderFlexion": 90,
+     "elbowFlexion": 160,
+     "neckFlexion": 30,
+     "neckExtension": 55
   }
 }

@@ -30,7 +30,8 @@ class VariablePendulum():
 
     def update(self):
         if not self.done:
-            action = self.neuralnetwork.forward([abs(self.angle()), self.body.angular_velocity])
+            
+            action = self.neuralnetwork.forward([abs(self.angle()), self.body.velocity.x])
             self.step(action)
             self.checkMovable()
 

@@ -10,6 +10,7 @@
       "neck": [-90, 13, 3],
       "upperArm": [50, 35, 6],
       "lowerArm": [-30, 26, 6],
-      "head": [10, 5]
+      "head": [10, 5], 
+      "maxKneeAngle": 1.57
   }
 }
