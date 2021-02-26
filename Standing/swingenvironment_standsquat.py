@@ -22,10 +22,11 @@ def loadConfig(configFile):
 
     return json.loads(config)
 
-config = loadConfig('config_standsquat.json')
+config = loadConfig('Standing//config_standsquat.json')
 
 # Set-up environment
 space = pymunk.Space()
+space.gravity = 0, 0
 space.gravity = config['environmentConfig']["gravity"] #0,900
 b0 = space.static_body
 
@@ -41,6 +42,7 @@ WHITE = (255, 255, 255)
 class PinJoint:
     def __init__(self, b, b2, a=(0, 0), a2=(0, 0)):
         joint = pymunk.PinJoint(b, b2, a, a2)
+        joint.collide_bodies = False
         space.add(joint)
 
 class PivotJoint:
@@ -108,11 +110,25 @@ class App:
             self.stickFigure.anticlockwiseTorque()
         elif keys[pygame.K_RIGHT]:
             self.stickFigure.clockwiseTorque()
+        elif keys[pygame.K_i]:
+            print("Angle between arms: %s | Angle between legs: %s" % (self.stickFigure.armLegAngle()))
             
         
         if event.type == KEYDOWN:
             if event.key in (K_q, K_ESCAPE):
-                self.running = False
+                self.running = False # QUIT
+
+            elif event.key == K_UP:
+                angles = self.stickFigure.armLegAngle() # [Arm angle, Leg angle], may not need both
+                legAngle = angles[1] # + some slack
+                # if legAngle < self.stickFigure.maxAngles[1]:
+                # apply the torque upwards
+
+            elif event.key == K_DOWN:
+                angles = self.stickFigure.armLegAngle() # [Arm angle, Leg angle], may not need both
+                legAngle = angles[1] # - some slack
+                # if legAngle > self.stickFigure.maxAngles[0]:
+                # apply the torque downwards
 
             elif event.key == K_p:
                 pygame.image.save(self.screen, 'joint.png')
@@ -150,6 +166,7 @@ class Stickman:
         # The head has format --> "head": [radius, mass]
         self.theta = swing.theta - 90 - lean
         self.config = config
+        self.maxLegAngles = [0, 160]
         
         foot_index = -2
         hand_index = 1
@@ -196,6 +213,13 @@ class Stickman:
         
         #Generate head
         headRadius = config["head"][0]
+        headPosition = self.shoulderPosition + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
+        self.head = Circle(headPosition, headRadius)
+        self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
+
+        holdHand = PivotJoint(self.lowerArm.body, swing.getJointByNumber(1), self.lowerArmVector)
+        holdFoot = PivotJoint(self.foot.body, swing.getJointByNumber(-1), self.footVector)
+
         self.headPosition = self.shoulderPosition + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
         self.head = Circle(self.headPosition, headRadius)
         self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
@@ -215,6 +239,16 @@ class Stickman:
     def vectorSum(self, v1, v2):
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
     
+    def armLegAngle(self):
+        upperArmAngle = self.upperArm.body.angle
+        lowerArmAngle = self.lowerArm.body.angle
+        armAngle = lowerArmAngle - upperArmAngle
+            
+        upperLegAngle = self.upperLeg.body.angle
+        lowerLegAngle = self.lowerLeg.body.angle
+        legAngle = upperLegAngle - lowerLegAngle
+
+        return armAngle, legAngle
     
     def clockwiseTorque(self, max_force=10000):
         """

@@ -28,7 +28,7 @@ def loadConfig(configFile):
 def vector_sum(a1, a2):
     return [(a1[0]+a2[0]), (a1[1]+a2[1])]
 
-config = loadConfig('config_stickman.json')["squatStandConfig"]
+config = loadConfig('Stickman//config_stickman.json')["squatStandConfig"]
 
 #Set-up environment
 space = pymunk.Space()
