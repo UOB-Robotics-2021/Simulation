@@ -26,7 +26,7 @@ config = loadConfig('Standing\\config_standsquat.json')
 
 # Set-up environment
 space = pymunk.Space()
-space.gravity = 0, 900
+space.gravity = 0, 0
 b0 = space.static_body
 
 size = w, h = 600, 500
@@ -41,6 +41,7 @@ WHITE = (255, 255, 255)
 class PinJoint:
     def __init__(self, b, b2, a=(0, 0), a2=(0, 0)):
         joint = pymunk.PinJoint(b, b2, a, a2)
+        joint.collide_bodies = False
         space.add(joint)
 
 class PivotJoint:
@@ -57,7 +58,7 @@ class Segment:
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
-        shape.filter = pymunk.ShapeFilter(group=1)
+        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         shape.color = (0, 255, 0, 0)
         space.add(self.body, shape)
 
@@ -186,9 +187,8 @@ class Stickman:
         self.head = Circle(headPosition, headRadius)
         self.headJoint = PivotJoint(self.torso.body, self.head.body, torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
 
-        holdHand = PinJoint(self.lowerArm.body, swing.getJointByNumber(1), lowerArmVector)
-        holdFoot = PinJoint(self.foot.body, swing.getJointByNumber(-1), footVector)
-
+        holdHand = PivotJoint(self.lowerArm.body, swing.getJointByNumber(1), lowerArmVector)
+        holdFoot = PivotJoint(self.foot.body, swing.getJointByNumber(-1), footVector)
 
     def dirVec(self, limb, scale):
         angle = self.config[limb][0] + self.theta
@@ -257,7 +257,7 @@ class Swing():
 theta = 45 # Rotation of entire system
 
 swing = Swing(space, config['swingConfig'], theta=theta)
-man = Stickman(config=config["squatStandConfig"], scale=0.7, swing=swing, lean=30)
+man = Stickman(config=config["squatStandConfig"], scale=0.7, swing=swing, lean=0)
 
 data = []
 
