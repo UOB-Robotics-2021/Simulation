@@ -146,7 +146,7 @@ draw_options = pymunk.pygame_util.DrawOptions(screen)
 running = True
 clock = pygame.time.Clock()
 le = LearningEnvironment(space, VariablePendulum, loadConfig('config.json')['variablePendulumMLConfig'])
-pygame.display.set_caption(f'Machine Learning')
+pygame.display.set_caption('Machine Learning')
 
 while running:
     for event in pygame.event.get():

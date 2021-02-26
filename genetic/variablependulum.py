@@ -36,10 +36,12 @@ class VariablePendulum():
         
         self.neuralnetwork = NeuralNetwork(2, 3, 3, 10)
         self.neuralnetwork.loadNN('variablePendulum')
+        self.data = []
     
     def update(self):
         action = self.neuralnetwork.forward([abs(self.angle()), self.body.angular_velocity])
         self.extendRope(np.argmax(action))
+        self.data.append((self.angle(), self.body.angular_velocity, np.argmax(action)))
 
     def generateModel(self):
         #Create objects
