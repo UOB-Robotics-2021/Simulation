@@ -151,9 +151,12 @@ class Stickman:
         self.theta = swing.theta - 90 - lean
         self.config = config
         
+        foot_index = -2
+        hand_index = 1
+        
         #Generate foot and ankle
-        self.anklePosition = swing.getJointByNumber(-1).position - (self.config["foot"][1] * Vec2d(np.cos(self.theta * np.pi/180), np.sin(self.theta * np.pi/180)))
-        self.footVector = swing.getJointByNumber(-1).position - self.anklePosition
+        self.anklePosition = swing.getJointByNumber(foot_index).position - (self.config["foot"][1] * Vec2d(np.cos(self.theta * np.pi/180), np.sin(self.theta * np.pi/180)))
+        self.footVector = swing.getJointByNumber(foot_index).position - self.anklePosition
         self.foot = Segment(self.anklePosition, self.footVector, self.limbMass("foot"))
         
         #Generate lower leg and knee
@@ -181,7 +184,7 @@ class Stickman:
         
         #Generate elbow and lower arm
         self.elbowPosition = self.vectorSum(self.shoulderPosition, self.upperArmVector)
-        self.lowerArmVector = swing.getJointByNumber(1).position - self.elbowPosition
+        self.lowerArmVector = swing.getJointByNumber(hand_index).position - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
         
@@ -198,8 +201,8 @@ class Stickman:
         self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
 
         #Attack stick figure to swing
-        self.holdHand = PinJoint(self.lowerArm.body, swing.getJointByNumber(1), self.lowerArmVector)
-        self.holdFoot = PinJoint(self.foot.body, swing.getJointByNumber(-1), self.footVector)
+        self.holdHand = PinJoint(self.lowerArm.body, swing.getJointByNumber(hand_index), self.lowerArmVector)
+        self.holdFoot = PinJoint(self.foot.body, swing.getJointByNumber(foot_index), self.footVector)
         
        
     def dirVec(self, limb, scale):
@@ -289,14 +292,19 @@ class Swing():
         pivots = []
 
         joints.append([top, top_shape])
-
-        for i, j in zip(config['jointDistances'], config['jointMasses']):
+        #print("test", top.position)
+        positionArray = [[top.position[0], top.position[1]]]
+        
+        for v, j in zip(config['jointDistances'], config['jointMasses']):
             '''
             Iterate through the list of coordinates as specified by jointLocations,
             relative to the top of the swing
             '''
+            x,y=v[0], v[1]
             point = pymunk.Body(j, 100)
-            point.position = top.position + (i * Vec2d(np.cos(self.theta * np.pi/180), np.sin(self.theta * np.pi/180)))
+            #point.position = top.position + (x * Vec2d(np.cos(self.theta * np.pi/180), y*np.sin(self.theta * np.pi/180)))
+            point.position = [(positionArray[-1][0] + x), (positionArray[-1][1]+y)]
+            positionArray.append(point.position)
             point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
             point_shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
             # if the first joint, join to the top, otherwise join to the preceding joint
@@ -307,9 +315,16 @@ class Swing():
             pivot.collide_bodies = False
             joints.append([point, point_shape])
             pivots.append(pivot)
+            
+            
 
             self.space.add(point, point_shape)
             self.space.add(pivot)
+            
+            if v == config['jointDistances'][-1]:
+                print("last")
+                joint = pymunk.PinJoint(top,point_shape.body)
+                self.space.add(joint)
 
         return {'rod' : joints, 'top' : [top, top_shape], 'pivots' : pivots}
 
@@ -329,7 +344,7 @@ class Swing():
 
 theta = 45 # Rotation of entire system
 
-swing = Swing(space, config['swingConfig'], theta=theta)
+swing = Swing(space, config['triangleSwingConfig'], theta=theta)
 man = Stickman(config=config["squatStandConfig"], scale=0.7, swing=swing, lean=30)
 
 data = []
