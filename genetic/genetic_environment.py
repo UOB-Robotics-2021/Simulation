@@ -169,5 +169,3 @@ while running:
     pygame.display.flip()
     
     space.step(1/30)
-
-saveNN(le.champion_nn, 'variablePendulum')
