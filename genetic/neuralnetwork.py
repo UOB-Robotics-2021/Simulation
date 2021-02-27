@@ -60,30 +60,48 @@ class NeuralNetwork():
         self.outputs += mutations
         self.layers = mutated_layers
         self.bias = mutated_bias
-    
-    def loadNN(self, nnName):
-        layerFiles = os.listdir(f'{nnName}\layers')
-        biasFiles = os.listdir(f'{nnName}\layers')
-        
-        layers = []
-        bias = []
-        output = np.load(f'{nnName}\layers\{layerFiles[-1]}')
-        for i in range(len(layerFiles)-1):
-            layers.append(np.load(os.path.join(nnName, f'layers\{i}.npy')))
-        for j in range(len(biasFiles)):
-            bias.append(np.load(os.path.join(nnName, f'bias\{i}.npy')))
-        
-        self.layers = layers
-        self.bias = bias
-        self.outputs = output
 
-    def saveNN(self, nnName):
-        cnt = 0
-        for i in self.layers:
-            np.save(f'{nnName}\layers\{cnt}', i)
-            cnt += 1
-        np.save(f'{nnName}\layers\{cnt}', self.outputs)
-        cnt = 0
-        for i in self.bias:
-            np.save(f'{nnName}\\bias\{cnt}', i)
-            cnt+=1
+def produceChildNetwork(parent_one, parent_two):
+    mean_layers = []
+    mean_bias = []
+    for i, j in zip(parent_one.layers, parent_two.layers):
+        mean_layers.append(i/2+j/2)
+    for i, j in zip(parent_one.bias, parent_two.bias):
+        mean_bias.append(i/2+j/2)
+    mean_outputs = parent_one.outputs/2 + parent_two.outputs/2
+    
+    neuralnetwork = NeuralNetwork(1,1,1,1)
+    neuralnetwork.layers = mean_layers
+    neuralnetwork.bias = mean_bias
+    neuralnetwork.outputs = mean_outputs
+    
+    return neuralnetwork
+    
+def loadNN(nnName):
+    layerFiles = os.listdir(f'{nnName}\layers')
+    biasFiles = os.listdir(f'{nnName}\layers')
+    
+    layers = []
+    bias = []
+    output = np.load(f'{nnName}\layers\{layerFiles[-1]}')
+    for i in range(len(layerFiles)-1):
+        layers.append(np.load(os.path.join(nnName, f'layers\{i}.npy')))
+    for j in range(len(biasFiles)):
+        bias.append(np.load(os.path.join(nnName, f'bias\{i}.npy')))
+    
+    neuralnetwork = NeuralNetwork(1,1,1,1)
+    neuralnetwork.layers = layers
+    neuralnetwork.bias = bias
+    neuralnetwork.outputs = output
+    return neuralnetwork
+
+def saveNN(neuralnetwork, nnName):
+    cnt = 0
+    for i in neuralnetwork.layers:
+        np.save(f'{nnName}\layers\{cnt}', i)
+        cnt += 1
+    np.save(f'{nnName}\layers\{cnt}', neuralnetwork.outputs)
+    cnt = 0
+    for i in neuralnetwork.bias:
+        np.save(f'{nnName}\\bias\{cnt}', i)
+        cnt+=1
