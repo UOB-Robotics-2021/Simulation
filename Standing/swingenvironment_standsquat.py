@@ -2,6 +2,8 @@
 import pymunk
 import pygame
 import json
+import os
+
 
 from pymunk.pygame_util import *
 from pymunk.vec2d import Vec2d
@@ -22,7 +24,11 @@ def loadConfig(configFile):
 
     return json.loads(config)
 
-config = loadConfig('Standing//config_standsquat.json')
+dir_name = os.path.basename(os.getcwd())
+if dir_name == "Standing":
+    config = loadConfig('config_standsquat.json')
+else:
+    config = loadConfig('Standing//config_standsquat.json')
 
 # Set-up environment
 space = pymunk.Space()
@@ -88,19 +94,11 @@ class App:
 
     def run(self):
         while self.running:
+            
+            #Handle user interaction
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_UP] and self.stickFigure.legAngle() > self.stickFigure.maxLegAngles[0]:
-                print(self.stickFigure.legAngle())
-                self.stickFigure.upperLegMotor.rate = -5
-            elif keys[pygame.K_DOWN] and self.stickFigure.legAngle() < self.stickFigure.maxLegAngles[1]:
-                print(self.stickFigure.legAngle())
-                self.stickFigure.upperLegMotor.rate = 5
-            else:
-                self.stickFigure.upperLegMotor.rate = 0
- 
+                self.do_event(event)
+            self.stickFigure.applyConstraints()
             self.draw()
             self.clock.tick(fps)
 
@@ -108,6 +106,22 @@ class App:
                 space.step(1/fps/steps)
 
         pygame.quit()
+        
+    def do_event(self, event):
+        if event.type == QUIT:
+            self.running = False
+        
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            print(self.stickFigure.legAngle())
+            self.stickFigure.upKey = 1
+            self.stickFigure.downKey = 0
+            self.stickFigure.rotateClockwise()
+        elif keys[pygame.K_DOWN]:
+            self.stickFigure.rotateCounterClockwise()
+            self.stickFigure.downKey = 1
+            self.stickFigure.upKey = 0
+ 
 
     def draw(self):
         self.screen.fill(GRAY)
@@ -141,7 +155,7 @@ class Stickman:
         self.config = config
         self.maxLegAngles = [0, np.pi/2]
         
-        foot_index = -2
+        foot_index = -1
         hand_index = 1
         
         #Generate foot and ankle
@@ -195,6 +209,8 @@ class Stickman:
         self.holdHand = PinJoint(self.lowerArm.body, swing.getJointByNumber(hand_index), self.lowerArmVector)
         self.holdFoot = PinJoint(self.lowerLeg.body, swing.getJointByNumber(foot_index), (0, 0))
         
+        self.upKey = 0
+        self.downKey = 0
        
     def dirVec(self, limb, scale):
         angle = self.config[limb][0] + self.theta
@@ -206,12 +222,60 @@ class Stickman:
     def vectorSum(self, v1, v2):
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
     
+    def rotateClockwise(self):
+        x0 = self.upperLeg.body.position[0]
+        x1 = self.torso.body.position[0]
+        if x0 > x1:
+            self.upperLegMotor.rate = -config["jointConstraints"]["jointSpeed"]
+            self.legAngle()
+        else:
+            print("max extension reached")
+    def rotateCounterClockwise(self):
+        if self.legAngle() < config["jointConstraints"]["kneeFlexion"]:
+            self.upperLegMotor.rate = config["jointConstraints"]["jointSpeed"]
+            self.legAngle()
+        else:
+            print("max flexion reached", config["jointConstraints"]["kneeFlexion"])
+    
+    def stayStill(self):
+        self.upperLegMotor.rate = 0
+        
+    def applyConstraints(self):
+        """
+        Stops motion if constraints breached (prevents user from holding down an arrow key)
+        """
+        if self.upperLegMotor.rate != 0:
+            x0 = self.upperLeg.body.position[0]
+            x1 = self.torso.body.position[0]
+            
+            if x1 > x0 and self.upKey==1: 
+                self.stayStill()
+                print("max extension constaint reached")
+            elif self.legAngle() > config["jointConstraints"]["kneeFlexion"] and self.downKey == 1:
+                self.upperLegMotor.rate = 0
+                print("max flexion constraint reached")
+        else:
+            pass
+    
     def legAngle(self):
+    
         upperLegAngle = self.upperLeg.body.angle
         lowerLegAngle = self.lowerLeg.body.angle
         legAngle = upperLegAngle - lowerLegAngle
+        
+        upperLegVector = self.torso.body.position - self.upperLeg.body.position
+        lowerLegVector = self.upperLeg.body.position - self.lowerLeg.body.position
+        
+        v0  = upperLegVector / np.linalg.norm(upperLegVector)
+        v1 = lowerLegVector / np.linalg.norm(lowerLegVector)
+        dot_product = np.dot(v0, v1)
+        angle = math.degrees(np.arccos(dot_product))
+        
+        x0 = self.upperLeg.body.position[0]
+        x1 = self.torso.body.position[0]
 
-        return -legAngle
+        
+        return angle
 
 
 # Code for swing
@@ -262,11 +326,6 @@ class Swing():
             self.space.add(point, point_shape)
             self.space.add(pivot)
             
-            if v == config['jointDistances'][-1]:
-                print("last")
-                joint = pymunk.PinJoint(top,point_shape.body)
-                self.space.add(joint)
-
         return {'rod' : joints, 'top' : [top, top_shape], 'pivots' : pivots}
 
     def getJointByNumber(self, num):

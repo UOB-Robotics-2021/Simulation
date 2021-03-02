@@ -13,8 +13,8 @@
   },
   "triangleSwingConfig": {
   "topPosition": [ 300, 50 ],
-  "jointDistances": [[-50,100], [-50,100], [-100, 0]],
-  "jointMasses": [ 20, 10, 10, 10]
+  "jointDistances": [[-50,100], [-50,100]],
+  "jointMasses": [ 20, 10, 10]
   },
   "squatStandConfig": {
     "anklePosition": [ -400, 0 ],
@@ -27,6 +27,7 @@
     "head": [ 10, 5 ]
   },
   "jointConstraints": {
+     "jointSpeed": 4,
      "pelvisFlexion": 120,
      "kneeFlexion": 130,
      "shoulderFlexion": 90,
