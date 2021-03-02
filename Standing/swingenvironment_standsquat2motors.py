@@ -297,7 +297,7 @@ swingLength = 200
 man = Stickman(space=space, config=config, scale=0.7, lean=20, theta=angle)
 
 data = []
-
+print("Testing...")
 App(man).run()
 
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
