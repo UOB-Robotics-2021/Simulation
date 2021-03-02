@@ -8,6 +8,7 @@
   },
   "swingConfig": {
     "topPosition": [ 300, 50 ],
+    "swingLength": 200,
     "jointDistances": [100,200],
     "jointMasses": [ 20, 10]
   },

@@ -54,17 +54,17 @@ class PivotJoint:
         space.add(joint)
 
 class Segment:
-    def __init__(self, p0, v, m=10, radius=2):
+    def __init__(self, p0, v, m=10, radius=2, layer=None):
         self.body = pymunk.Body()
         self.body.position = p0
         shape = pymunk.Segment(self.body, (0, 0), v, radius)
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
-        #shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 1)
+        if layer is not None:
+            shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ layer)
         shape.color = (0, 255, 0, 0)
         space.add(self.body, shape)
-
 
 class Circle:
     def __init__(self, pos, radius=20):
@@ -146,25 +146,37 @@ class App:
 
 # Code to generate figure
 class Stickman:
-    def __init__(self, config, scale=1, lean=0, theta=0):
+    def __init__(self, space, config, scale=1, lean=0, theta=0):
         # In the json file, the format for limbs is --> "limb": [angle, length, mass].
         # The head has format --> "head": [radius, mass]
-        self.swing = Swing(space, config['swingConfig'], theta)
+        self.space = space
+
+        self.swing = self.generateSwing(config['swingConfig'], theta + 90)
+        self.stickFigure = self.generateStickman(config['squatStandConfig'], theta - lean)
+
+    def generateSwing(self, config, swingAngle):
+        swingTopPosition = Vec2d(*config['topPosition'])
+        swingVector = config['swingLength'] * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180))
+        self.swing = Segment(swingTopPosition, swingVector, 30, 1, 1)
         
-        self.theta = theta - lean
-        self.config = config["squatStandConfig"]
-        self.maxLegAngles = [0, np.pi/2]
+        top = pymunk.Body(10,1000000, pymunk.Body.STATIC)
+        top.position = Vec2d(*config['topPosition'])
+        top_shape = pymunk.Poly.create_box(top, (20,20))
+        self.space.add(top, top_shape)
+
+        PinJoint(top, self.swing.body)
         
+    def generateStickman(self, config, theta):
         foot_index = -1
         hand_index = 0
-        
-        #Generate foot and ankle
-        self.anklePosition = self.swing.getJointByNumber(foot_index).position
+        self.maxLegAngles = [0, np.pi/2]
+        self.theta = theta
+        self.footPosition = self.swing.body.position + swingVector
         
         #Generate lower leg and knee
         self.lowerLegVector = self.dirVec("lowerLeg", scale)
-        self.lowerLeg = Segment(self.anklePosition, self.lowerLegVector, self.limbMass("lowerLeg"))
-        self.kneePosition = self.vectorSum(self.anklePosition, self.lowerLegVector)
+        self.lowerLeg = Segment(self.footPosition, self.lowerLegVector, self.limbMass("lowerLeg"))
+        self.kneePosition = self.vectorSum(self.footPosition, self.lowerLegVector)
         self.lowerLegMotor = pymunk.SimpleMotor(b0, self.lowerLeg.body, 0)
         space.add(self.lowerLegMotor)
         
@@ -191,7 +203,7 @@ class Stickman:
         
         #Generate elbow and lower arm
         self.elbowPosition = self.vectorSum(self.shoulderPosition, self.upperArmVector)
-        self.lowerArmVector = self.swing.getJointByNumber(hand_index).position - self.elbowPosition
+        self.lowerArmVector = (self.swing.body.position + swingVector/2) - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
         
@@ -206,10 +218,9 @@ class Stickman:
         self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
 
         #Attack stick figure to swing
-        self.holdHand = PinJoint(self.lowerArm.body, self.swing.getJointByNumber(hand_index), self.lowerArmVector)
-        self.holdFoot = PinJoint(self.lowerLeg.body, self.swing.getJointByNumber(foot_index), (0, 0))
-        
-       
+        self.holdHand = PinJoint(self.lowerArm.body, self.swing.body, self.lowerArmVector)
+        self.holdFoot = PinJoint(self.lowerLeg.body, self.swing.body, (0, 0))
+
     def dirVec(self, limb, scale):
         angle = self.config[limb][0] + self.theta
         return scale * self.config[limb][1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
@@ -229,57 +240,61 @@ class Stickman:
 
 
 # Code for swing
-class Swing():
-    def __init__(self, space, swingConfig, theta=0):
-        self.space = space
-        self.theta = theta + 90
-        self.objects = self.generateSwing(swingConfig)
+#class Swing():
+#    def __init__(self, space, swingConfig, theta=0):
+#        self.space = space
+#        self.theta = theta + 90
+#        self.objects = self.generateSwing(swingConfig)
 
-    def generateSwing(self, config):
-        # specifies the top of the swing as defined by topPosition
-        top = pymunk.Body(10,1000000, pymunk.Body.STATIC)
-        top.position = Vec2d(*config['topPosition'])
-        top_shape = pymunk.Poly.create_box(top, (20,20))
+#    def generateSwing(self, config):
+#        # specifies the top of the swing as defined by topPosition
+#        top = pymunk.Body(10,1000000, pymunk.Body.STATIC)
+#        top.position = Vec2d(*config['topPosition'])
+#        top_shape = pymunk.Poly.create_box(top, (20,20))
 
-        self.space.add(top, top_shape)
+#        self.space.add(top, top_shape)
 
-        joints = [] # list of [body, shape]
-        pivots = []
-        for i, j in zip(config['jointDistances'], config['jointMasses']):
-            '''
-            Iterate through the list of coordinates as specified by jointLocations,
-            relative to the top of the swing
-            '''
-            point = pymunk.Body(j, 100)
-            point.position = top.position + (i * Vec2d(np.cos(self.theta * np.pi/180), np.sin(self.theta * np.pi/180)))
-            point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
-            # if the first joint, join to the top, otherwise join to the preceding joint
-            if len(joints) == 0:
-                pivot = pymunk.PinJoint(top, point, (0,0))
-            else:
-                pivot = pymunk.PinJoint(joints[-1][0], point) # selects the body component of the preceding joint
-            pivot.collide_bodies = False
-            joints.append([point, point_shape])
-            pivots.append(pivot)
+#        joints = [] # list of [body, shape]
+#        pivots = []
+#        for i, j in zip(config['jointDistances'], config['jointMasses']):
+#            '''
+#            Iterate through the list of coordinates as specified by jointLocations,
+#            relative to the top of the swing
+#            '''
+#            point = pymunk.Body(j, 100)
+#            point.position = top.position + (i * Vec2d(np.cos(self.theta * np.pi/180), np.sin(self.theta * np.pi/180)))
+#            point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
+#            # if the first joint, join to the top, otherwise join to the preceding joint
+#            if len(joints) == 0:
+#                pivot = pymunk.PinJoint(top, point, (0,0))
+#            else:
+#                pivot = pymunk.PinJoint(joints[-1][0], point) # selects the body component of the preceding joint
+#            pivot.collide_bodies = False
+#            joints.append([point, point_shape])
+#            pivots.append(pivot)
 
-            self.space.add(point, point_shape)
-            self.space.add(pivot)
+#            self.space.add(point, point_shape)
+#            self.space.add(pivot)
 
-        return {'rod' : joints, 'top' : [top, top_shape], 'pivots' : pivots}
+#        return {'rod' : joints, 'top' : [top, top_shape], 'pivots' : pivots}
 
-    def getJointByNumber(self, num):
-        return self.objects['rod'][num][0]
+#    def getJointByNumber(self, num):
+#        return self.objects['rod'][num][0]
 
-    def render(self, screen):
-        pass
+#    def render(self, screen):
+#        pass
 
-    def update(self):
-        self.eventListener()
+#    def update(self):
+#        self.eventListener()
 
-    def eventListener(self):
-        pass
+#    def eventListener(self):
+#        pass
 
-man = Stickman(config=config, scale=0.7, lean=20, theta=45)
+angle = 45
+swingPosition = (300, 50)
+swingLength = 200
+
+man = Stickman(space=space, config=config, scale=0.7, lean=20, theta=angle)
 
 data = []
 
