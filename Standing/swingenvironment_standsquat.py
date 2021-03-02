@@ -22,7 +22,7 @@ def loadConfig(configFile):
 
     return json.loads(config)
 
-config = loadConfig('Standing//config_standsquat.json')
+config = loadConfig('config_standsquat.json')
 
 # Set-up environment
 space = pymunk.Space()
