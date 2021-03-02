@@ -1,6 +1,6 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 900 ]
+    "gravity": [ 0, 0 ]
   },
   "LswingConfig":{
   "topPosition": [400,50],
@@ -12,13 +12,18 @@
     "jointDistances": [100,200],
     "jointMasses": [ 20, 10]
   },
+  "rodSwingConfig":{
+    "topPosition": [ 300, 50 ],
+    "jointDistances": [[100,200]],
+    "jointMasses": [20]
+  },
   "triangleSwingConfig": {
   "topPosition": [ 300, 50 ],
   "jointDistances": [[-50,100], [-50,100]],
   "jointMasses": [ 20, 10, 10]
   },
   "squatStandConfig": {
-    "anklePosition": [ -400, 0 ],
+    "anklePosition": [ 200, 200 ],
     "foot": [ 270, 22, 2 ],
     "lowerLeg": [ -70, 44, 10 ],
     "upperLeg": [ -130, 48, 20 ],
