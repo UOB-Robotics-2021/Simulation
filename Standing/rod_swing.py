@@ -57,16 +57,26 @@ class PivotJoint:
         space.add(joint)
 
 class Segment:
-    def __init__(self, p0, v, m=10, radius=2):
-        self.body = pymunk.Body()
-        self.body.position = p0
-        shape = pymunk.Segment(self.body, (0, 0), v, radius)
-        shape.mass = m
-        shape.density = 0.1
-        shape.elasticity = 0.5
-        #shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 1)
-        shape.color = (0, 255, 0, 0)
-        space.add(self.body, shape)
+    def __init__(self, p0, v, m=10, radius=2, body=0):
+        if body == 0:
+            self.body = pymunk.Body()
+            self.body.position = p0
+            shape = pymunk.Segment(self.body, (0, 0), v, radius)
+            shape.mass = m
+            shape.density = 0.1
+            shape.elasticity = 0.5
+            #shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 1)
+            shape.color = (0, 255, 0, 0)
+            space.add(self.body, shape)
+        else:
+            print(body)
+            shape = pymunk.Segment(body, (0, 0), v, radius)
+            shape.mass = m
+            shape.density = 0.1
+            shape.elasticity = 0.5
+            shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
+            shape.color = (0, 255, 0, 0)
+            space.add(shape)
 
 
 class Circle:
@@ -155,11 +165,12 @@ class Stickman:
         self.config = config
         self.maxLegAngles = [0, np.pi/2]
         
-        foot_index = -1
+        foot_index = 0
         hand_index = 1
-        
+        print(swing.segmentArray[foot_index].position)
         #Generate foot and ankle
-        self.anklePosition = config["anklePosition"]
+        #self.anklePosition = config["anklePosition"]
+        self.anklePosition = swing.positionArray[foot_index+1]
         
         #Generate lower leg and knee
         self.lowerLegVector = self.dirVec("lowerLeg", scale)
@@ -211,6 +222,8 @@ class Stickman:
         self.holdHand = PinJoint(self.lowerArm.body, swing.getJointByNumber(hand_index), self.lowerArmVector)
         self.holdFoot = PinJoint(self.lowerLeg.body, swing.getJointByNumber(foot_index), (0, 0))
         """
+        v = [-100, -200]
+        self.holdFoot = PinJoint(self.lowerLeg.body, swing.segmentArray[foot_index])
         
         self.upKey = 0
         self.downKey = 0
@@ -305,12 +318,17 @@ class Swing():
             
             if i == 0:
                 joint = PivotJoint(top, point_shape.body, (0,0))
+                point_shape.body.position = pf
+                
             else:
                 joint = PivotJoint(segmentArray[i-1], point_shape.body)
             
             segmentArray.append(point_shape.body)
             positionArray.append(pf)
             i=i+1
+        
+        self.positionArray = positionArray
+        self.segmentArray = segmentArray
     def getJointByNumber(self, num):
         return self.objects['rod'][num][0]
 

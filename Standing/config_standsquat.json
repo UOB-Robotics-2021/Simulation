@@ -1,6 +1,6 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 0 ]
+    "gravity": [ 0, 900 ]
   },
   "LswingConfig":{
   "topPosition": [400,50],
@@ -33,12 +33,16 @@
     "head": [ 10, 5 ]
   },
   "jointConstraints": {
-     "jointSpeed": 4,
-     "pelvisFlexion": 120,
+     "jointSpeed": 5,
+     "pelvisFlexion": 75,
+     "pelvisExtension": 30,
+     "pelvisHyperExtension": 15,
      "kneeFlexion": 130,
      "shoulderFlexion": 90,
-     "elbowFlexion": 160,
-     "neckFlexion": 30,
+     "shoulderExtension": 90,
+     "elbowFlexion": 150,
+     "elbowExtension": 0,
+     "neckFlexion": 80,
      "neckExtension": 55
   }
 }
