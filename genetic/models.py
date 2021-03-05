@@ -11,27 +11,63 @@ from pymunk.vec2d import Vec2d
 import pygame
 from neuralnetwork import NeuralNetwork
 
+'''
+Skeleton Model 
+if followed, genetic_environment should, in theory, be able to run a machine learning simulation
+on the model provided you define a learning environment and feed an appropriate config file
+
+e.g. learningenvironment = LearningEnvironment(space, Model, loadConfig('config.json')['modelConfig'])
+
+class Model():
+    def __init__(self, space, configFile, numActions):
+        initialise stuff here
+    
+    def generateModel(self):
+        build the model
+    
+    def destroyModel(self):
+        clear the model to allow for reset
+    
+    def update(self):
+        set up the inputs for the step function; determine an action via the neural network
+    
+    def step(self, action):
+        change the system in some way in response to the action determined by the neural network
+    
+    def calculateFitness(self):
+        determine the fitness of the model at the end of the simulation (could be changed?)
+
+'''
+
 class VariablePendulum():
     
     def __init__(self, space, configFile, numActions=500):
         self.num_actions = numActions
         self.config = configFile
         self.space = space
+        self.colour = (np.random.uniform(0,255),np.random.uniform(0,255),np.random.uniform(0,255),255)
         self.objects = self.generateModel()
-        
+
+        self.initial_amplitude = abs(self.angle())
         self.maximum_amplitude = abs(self.angle())
         self.fitness = 0
         self.action_step = 0
+        self.num_reversals = 0
         self.last_action = 0
+        self.prev_angle = 0
+        self.prev_dir = 2
+        self.steps_to_done = 0
         self.done = False
+        self.complete = False
         self.movable = True
         
-        self.neuralnetwork = NeuralNetwork(2, 3, *self.config['hiddenLayers'])
+        self.neuralnetwork = NeuralNetwork(4, 3, *self.config['hiddenLayers'])
 
     def update(self):
         if not self.done:
-            
-            action = self.neuralnetwork.forward([abs(self.angle()), self.body.velocity.x])
+            dtheta = self.angle()-self.prev_angle
+            ddtheta = self.angle()-dtheta
+            action = self.neuralnetwork.forward([abs(self.angle()), abs(dtheta), abs(ddtheta), self.maximum_amplitude])
             self.step(action)
             self.checkMovable()
 
@@ -44,6 +80,7 @@ class VariablePendulum():
         self.circle = pymunk.Circle(self.body, radius=self.config["flywheelRadius"])
         self.circle.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         self.circle.friction = 90000
+        self.circle.color = self.colour
         #Create joints
         self.joint = pymunk.PinJoint(self.space.static_body, self.body, self.config["pivotPosition"])
         
@@ -66,6 +103,8 @@ class VariablePendulum():
         return L
     
     def extendRope(self, direction):
+        if direction != self.prev_dir and direction != 2: self.num_reversals += 1
+        self.prev_dir = direction
         if direction == 0:
             if self.movable:
                 self.joint.distance = self.config["minPendulumLength"]
@@ -85,6 +124,7 @@ class VariablePendulum():
 
     def step(self, action):
         self.action_step += 1
+        self.prev_angle = self.angle()
         
         amplitude = abs(self.angle())
         if amplitude > self.maximum_amplitude:
@@ -93,9 +133,122 @@ class VariablePendulum():
         
         if self.action_step >= self.num_actions:
             self.done = True
+        if self.body.position.y < self.config['pivotPosition'][1]:
+            self.done = True
+            self.complete = True
 
     def calculateFitness(self):
-        return (1+self.maximum_amplitude)**4
+        if self.complete:
+            return (self.maximum_amplitude-self.initial_amplitude)+200/self.num_reversals
+        else:
+            return (self.maximum_amplitude-self.initial_amplitude)
+    
+    def destroyModel(self):
+        self.space.remove(self.body, self.circle, self.joint)
+
+class SmoothVariablePendulum():
+    
+    def __init__(self, space, configFile, numActions=500):
+        self.num_actions = numActions
+        self.config = configFile
+        self.space = space
+        self.colour = (np.random.uniform(0,255),np.random.uniform(0,255),np.random.uniform(0,255),255)
+        self.objects = self.generateModel()
+
+        self.initial_amplitude = abs(self.angle())
+        self.maximum_amplitude = abs(self.angle())
+        self.fitness = 0
+        self.action_step = 0
+        self.num_reversals = 0
+        self.last_action = 0
+        self.prev_angle = 0
+        self.prev_dir = 2
+        self.steps_to_done = 0
+        self.done = False
+        self.complete = False
+        self.movable = True
+        
+        self.neuralnetwork = NeuralNetwork(6, 5, *self.config['hiddenLayers'])
+
+    def update(self):
+        if not self.done:
+            dtheta = self.angle()-self.prev_angle
+            ddtheta = self.angle()-dtheta
+            action = self.neuralnetwork.forward([abs(self.angle()), abs(dtheta), abs(ddtheta), self.maximum_amplitude, self.body.angular_velocity, self.joint.distance])
+            self.step(action)
+            self.checkMovable()
+
+    def generateModel(self):
+        #Create objects
+        moment_of_inertia = 0.25*self.config["flywheelMass"]*self.config["flywheelRadius"]**2
+        
+        self.body = pymunk.Body(mass=self.config["flywheelMass"], moment=moment_of_inertia)
+        self.body.position = self.config["flywheelInitialPosition"]
+        self.circle = pymunk.Circle(self.body, radius=self.config["flywheelRadius"])
+        self.circle.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
+        self.circle.friction = 90000
+        self.circle.color = self.colour
+        #Create joints
+        self.joint = pymunk.PinJoint(self.space.static_body, self.body, self.config["pivotPosition"])
+        
+        self.top = self.body.position[1] + self.config["flywheelRadius"]
+
+        self.space.add(self.body, self.circle, self.joint)
+
+    def angle(self):
+        y = self.config['pivotPosition'][1] - self.body.position.y
+        x = self.body.position.x - self.config['pivotPosition'][0]
+        angle = np.arctan(x/y)
+        return angle
+
+    def extendRope(self, direction):
+        if direction != self.prev_dir and direction != 2: self.num_reversals += 1
+        self.prev_dir = direction
+        if direction == 0:
+            if self.movable:
+                self.joint.distance -= self.config['squattingSpeed']
+                if self.joint.distance < self.config['minPendulumLength']:
+                    self.joint.distance = self.config["minPendulumLength"]
+        elif direction == 1:
+            if self.movable:
+                self.joint.distance += self.config['squattingSpeed']
+                if self.joint.distance > self.config['maxPendulumLength']:
+                    self.joint.distance = self.config["maxPendulumLength"]
+        elif direction == 2:
+            self.body.angular_velocity += 1
+            if self.body.angular_velocity > 5:
+                self.body.angular_velocity = 5
+        elif direction == 3:
+            self.body.angular_velocity -= 1
+            if self.body.angular_velocity < -5:
+                self.body.angular_velocity = -5
+        else:
+            pass
+    
+    def checkMovable(self):
+        if self.action_step - self.last_action > self.config['actionDelay']:
+            self.movable = True
+
+    def step(self, action):
+        self.action_step += 1
+        self.prev_angle = self.angle()
+        
+        amplitude = abs(self.angle())
+        if amplitude > self.maximum_amplitude:
+            self.maximum_amplitude = amplitude
+        self.extendRope(np.argmax(action))
+        
+        if self.action_step >= self.num_actions:
+            self.done = True
+        if self.body.position.y < self.config['pivotPosition'][1]:
+            self.done = True
+            self.complete = True
+
+    def calculateFitness(self):
+        if self.complete:
+            return (self.maximum_amplitude-self.initial_amplitude)+200/self.num_reversals
+        else:
+            return (self.maximum_amplitude-self.initial_amplitude)
     
     def destroyModel(self):
         self.space.remove(self.body, self.circle, self.joint)

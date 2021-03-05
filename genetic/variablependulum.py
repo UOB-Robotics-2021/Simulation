@@ -9,7 +9,7 @@ import pymunk
 import pymunk.pygame_util
 import pygame
 import numpy as np
-from neuralnetwork import NeuralNetwork
+from neuralnetwork import NeuralNetwork, loadNN
 
 #Get pendulum config details
 import json
@@ -29,17 +29,24 @@ space.gravity = [0, config["g"]]
 
 class VariablePendulum():
     
-    def __init__(self, space, configFile):
+    def __init__(self, space, configFile, neuralnetwork):
         self.config = configFile
         self.space = space
         self.objects = self.generateModel()
-        
-        self.neuralnetwork = NeuralNetwork(2, 3, 3, 10)
-        self.neuralnetwork.loadNN('variablePendulum')
+        self.prev_angle = 0
+        self.neuralnetwork = neuralnetwork
+        self.maximum_amplitude = self.angle()
+
         self.data = []
     
     def update(self):
-        action = self.neuralnetwork.forward([abs(self.angle()), self.body.angular_velocity])
+        dtheta = self.angle()-self.prev_angle
+        self.prev_angle = self.angle()
+        if self.angle() > self.maximum_amplitude:
+            self.maximum_amplitude = self.angle()
+        ddtheta = self.angle()-dtheta
+        action = self.neuralnetwork.forward([abs(self.angle()), abs(dtheta), abs(ddtheta), self.maximum_amplitude])
+        print(action)
         self.extendRope(np.argmax(action))
         self.data.append((self.angle(), self.body.angular_velocity, np.argmax(action)))
 
@@ -49,6 +56,7 @@ class VariablePendulum():
         
         self.body = pymunk.Body(mass=self.config["flywheelMass"], moment=moment_of_inertia)
         self.body.position = self.config["flywheelInitialPosition"]
+        self.body.angular_velocity = 1
         self.circle = pymunk.Circle(self.body, radius=self.config["flywheelRadius"])
         self.circle.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         self.circle.friction = 90000
@@ -89,7 +97,7 @@ draw_options = pymunk.pygame_util.DrawOptions(screen)
 running = True
 clock = pygame.time.Clock()
 
-vp = VariablePendulum(space, config)
+vp = VariablePendulum(space, config, loadNN('variablePendulum'))
 
 #Main Simulation loop
 running = True 

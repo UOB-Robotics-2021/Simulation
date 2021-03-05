@@ -1,34 +1,33 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 900 ]
+    "gravity": [0, 900]
   },
   "LswingConfig":{
-  "topPosition": [400,50],
+  "topPosition": [300,50],
   "joints" : [[45, 100, 10], [45,100,10],[135, 100, 10], [135, 1, 10],[-110, 200, 10]]
   },
   "swingConfig": {
     "topPosition": [ 300, 50 ],
-    "swingLength": 200,
-    "jointDistances": [100,200],
+    "jointDistances": [100,100],
     "jointMasses": [ 20, 10]
   },
   "triangleSwingConfig": {
   "topPosition": [ 300, 50 ],
-  "jointDistances": [[-50,100], [-50,100]],
-  "jointMasses": [ 20, 10, 10]
+  "jointDistances": [[-50,100], [-50,100], [-100, 0]],
+  "jointMasses": [ 20, 10, 10, 10]
   },
   "squatStandConfig": {
-    "anklePosition": [ -400, 0 ],
-    "foot": [ 270, 22, 2 ],
-    "lowerLeg": [ -70, 44, 10 ],
-    "upperLeg": [ -130, 48, 20 ],
+    "anklePosition": [400, 0 ],
+    "foot": [90, 22, 2 ],
+    "lowerLeg": [150, 44, 10 ],
+    "upperLeg": [ 180, 48, 20 ],
     "torso": [ -90, 65, 20 ],
+    "neck": [ -90, 13, 3 ],
     "upperArm": [ 70, 35, 6 ],
     "lowerArm": [ 0, 0, 6 ],
     "head": [ 10, 5 ]
   },
   "jointConstraints": {
-     "jointSpeed": 4,
      "pelvisFlexion": 120,
      "kneeFlexion": 130,
      "shoulderFlexion": 90,
