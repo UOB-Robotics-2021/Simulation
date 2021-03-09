@@ -1,6 +1,6 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 0 ]
+    "gravity": [ 0, 900 ]
   },
   "LswingConfig":{
   "topPosition": [400,50],
@@ -9,7 +9,7 @@
   "swingConfig": {
     "topPosition": [ 300, 50 ],
     "swingLength": 200,
-    "jointDistances": [ 100, 100 ],
+    "jointDistances": [100, 100, 0],
     "jointMasses": [ 10, 10, 10, 10, 10, 10, 10, 10 ]
   },
   "rodSwingConfig":{

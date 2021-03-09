@@ -53,6 +53,12 @@ class PivotJoint:
         joint.collide_bodies = collide
         space.add(joint)
 
+class GearJoint:
+    def __init__(self, b, b2, phase, ratio):
+        joint = pymunk.GearJoint(b, b2, phase, ratio)
+        space.add(joint)
+        
+
 class Segment:
     def __init__(self, p0, v, m=10, radius=2, layer=None):
         self.body = pymunk.Body()
@@ -65,7 +71,7 @@ class Segment:
         if layer is not None:
             shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ layer)
         
-        #shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
+        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         shape.color = (0, 255, 0, 0)
         space.add(self.body, shape)
 
@@ -192,36 +198,44 @@ class Stickman:
 
         joints = [] # list of [body, shape]
         p = top.position
-        v = 0
-
+        vArray = []
+        gears = []
+        
+        c=0
         for i, j in zip(config['jointDistances'], config['jointMasses']):
             '''
             Iterate through the list of coordinates as specified by jointLocations,
             relative to the top of the swing
             '''
-            point = pymunk.Body(j, 100)
+            c=c+1
+            #point = pymunk.Body(j, 100)
             v =(i * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180)))
             point_shape = Segment(p, v, 5)
-            print(p)
+       
             p = p+v
             #point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
             
-            #point_shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
+            point_shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
             # if the first joint, join to the top, otherwise join to the preceding joint
             if len(joints) == 0:
-                pivot = pymunk.PinJoint(top, point, (0,0))
+                pivot = PivotJoint(top, point_shape.body, (0,0))
+                pivot.collide_bodies = False
             else:
-                pivot = pymunk.PinJoint(joints[-1][0], point) # selects the body component of the preceding joint
-            pivot.collide_bodies = False
-            joints.append([point, point_shape])
-
+                
+                pivot = PivotJoint(joints[-1][0], point_shape.body, vArray[-1]) # selects the body component of the preceding joint
+                if c== 2 or c==3 or c==4:
+                    self.gear = pymunk.GearJoint(joints[-1][0], point_shape.body, 0, 1)
+    
+                    self.space.add(self.gear)
+                    print("test", self.gear.ratio)
+            joints.append([point_shape.body, point_shape])
+            vArray.append(v)
             #self.space.add(point, point_shape)
-            self.space.add(pivot)
+            
 
         self.swingVector = config['swingLength'] * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180))
 
-        return {'rod' : joints, 'top' : [top, top_shape]}
-    
+        return {'rod' : joints, 'top' : [top, top_shape], "gears": gears}
     def getJointByNumber(self, num):
         return self.swing['rod'][num][0]
         
@@ -229,7 +243,8 @@ class Stickman:
         # In the json file, the format for limbs is --> "limb": [angle, length, mass].
         # The head has format --> "head": [radius, mass]
         foot_index = -1
-        hand_index = int(len(self.swing['rod'])/2-1)
+        #hand_index = int(len(self.swing['rod'])/2-1)
+        hand_index = 1
         self.hand_index, self.foot_index = hand_index, foot_index
         self.maxLegAngles = [0, np.pi/2]
         self.theta = theta
@@ -267,6 +282,10 @@ class Stickman:
         self.elbowPosition = self.vectorSum(self.shoulderPosition, self.upperArmVector)
         self.lowerArmVector = (self.swing['rod'][hand_index][0].position) - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
+        #self.lowerArm.body.body_type = 0
+        self.lowerArmMotor = pymunk.SimpleMotor(b0, self.lowerArm.body, 0)
+        space.add(self.lowerArmMotor)
+       
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
         self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
         space.add(self.elbowMotor)
@@ -282,7 +301,11 @@ class Stickman:
         self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
 
         #Attack stick figure to swing
-        self.holdHand = PinJoint(self.lowerArm.body, self.swing['rod'][hand_index][0], self.lowerArmVector)
+        self.holdHand = pymunk.PinJoint(self.lowerArm.body, self.swing['rod'][hand_index][0], self.lowerArmVector)
+        self.holdHand.max_force = 1
+        
+        
+        self.space.add(self.holdHand)
         self.holdFoot = PinJoint(self.lowerLeg.body, self.swing['rod'][foot_index][0], (0, 0))
 
     def dirVec(self, limb, scale):
@@ -315,6 +338,7 @@ class Stickman:
         return -legAngle
     
     def extendKnee(self):
+
         x0 = self.upperLeg.body.position[0]
         x1 = self.torso.body.position[0]
         if x0 > x1:
@@ -354,8 +378,8 @@ class Stickman:
         #print(self.elbowAngle())
         
        
+        #print(self.pelvisAngle()
         
-       
         if self.kneeMotor.rate != 0:
             x0 = self.upperLeg.body.position[0]
             x1 = self.torso.body.position[0]
