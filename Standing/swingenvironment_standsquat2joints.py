@@ -253,6 +253,9 @@ class Stickman:
         self.holdHand = PinJoint(self.lowerArm.body, self.swing['rod'][hand_index][0], self.lowerArmVector)
         self.holdFoot = PinJoint(self.lowerLeg.body, self.swing['rod'][foot_index][0], (0, 0))
 
+        self.motors = {'lowerLegMotor': self.lowerLegMotor, 'upperLegMotor': self.upperLegMotor, 'pelvisMotor': self.pelvisMotor}
+
+    # Methods used to create stickman
     def dirVec(self, limb, scale):
         """
         Calculates the vector for the limb.
@@ -272,6 +275,7 @@ class Stickman:
         """
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
     
+    #
     def legAngle(self):
         """
         Returns the angle between the upper and lower leg.
