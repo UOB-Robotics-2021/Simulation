@@ -114,12 +114,18 @@ class App:
             self.running = False
         keys = pygame.key.get_pressed()
         
-        if keys[pygame.K_LEFT]:
-            self.stickFigure.anticlockwiseTorque()
-        elif keys[pygame.K_RIGHT]:
-            self.stickFigure.clockwiseTorque()
-            
         
+        if keys[pygame.K_UP]:
+            print(self.stickFigure.legAngle())
+            self.stickFigure.upKey = 1
+            self.stickFigure.downKey = 0
+            self.stickFigure.rotateClockwise(self.swing)
+        elif keys[pygame.K_DOWN]:
+            self.stickFigure.rotateCounterClockwise(self.swing)
+            self.stickFigure.downKey = 1
+            self.stickFigure.upKey = 0
+ 
+       
         if event.type == KEYDOWN:
             if event.key in (K_q, K_ESCAPE):
                 self.running = False
@@ -266,18 +272,19 @@ class Stickman:
         jointVector = (0, 0)
         segmentArray = []
         for i,j in enumerate(swingConfig["joints"]):
-            if i == (len(swingConfig["joints"])-1):
-                joint = PinJoint(top, shape.body)
-            else:
-                angle = j[0] + self.theta
-                v = j[1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
-                
-                shape = Segment(p, v, j[2])
-                segmentArray.append(shape)
-                joint = PivotJoint(b, shape.body, jointVector)
-                jointVector = v
-                b = shape.body
-                p = p + v   
+            print(i)
+            angle = j[0] + self.theta
+            v = j[1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
+            
+            shape = Segment(p, v, j[2])
+            segmentArray.append(shape)
+            joint = PivotJoint(b, shape.body, jointVector)
+            motor = pymunk.SimpleMotor(b0, shape.body, rate=0)
+            space.add(motor)
+           
+            jointVector = v
+            b = shape.body
+            p = p + v   
                 
         self.swingSegmentArray = segmentArray
         
@@ -298,6 +305,25 @@ class Stickman:
 
     def vectorSum(self, v1, v2):
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
+    
+    def rotateClockwise(self, swing=None):
+        x0 = self.upperLeg.body.position[0]
+        x1 = self.torso.body.position[0]
+        if x0 > x1:
+            self.upperLegMotor.rate = -4
+            for motor in swing.objects["motors"]:
+                motor.rate = 100
+            self.legAngle()
+        else:
+            print("max extension reached")
+    def rotateCounterClockwise(self, swing=None):
+        if self.legAngle() < config["jointConstraints"]["kneeFlexion"]:
+            for motor in swing.objects["motors"]:
+                motor.rate = -100
+            self.upperLegMotor.rate = 4
+            self.legAngle()
+        else:
+            print("max flexion reached", config["jointConstraints"]["kneeFlexion"])
     
     
     def clockwiseTorque(self, max_force=10000):
@@ -355,6 +381,26 @@ class Stickman:
         """
         Stops motion if joints breach angle range
         """
+        
+    def legAngle(self):
+    
+        upperLegAngle = self.upperLeg.body.angle
+        lowerLegAngle = self.lowerLeg.body.angle
+        legAngle = upperLegAngle - lowerLegAngle
+        
+        upperLegVector = self.torso.body.position - self.upperLeg.body.position
+        lowerLegVector = self.upperLeg.body.position - self.lowerLeg.body.position
+        
+        v0  = upperLegVector / np.linalg.norm(upperLegVector)
+        v1 = lowerLegVector / np.linalg.norm(lowerLegVector)
+        dot_product = np.dot(v0, v1)
+        angle = math.degrees(np.arccos(dot_product))
+        
+        x0 = self.upperLeg.body.position[0]
+        x1 = self.torso.body.position[0]
+
+        
+        return angle
 
 
 # Code for swing
