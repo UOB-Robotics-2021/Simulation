@@ -61,8 +61,11 @@ class Segment:
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
+        
         if layer is not None:
             shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ layer)
+        
+        #shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         shape.color = (0, 255, 0, 0)
         space.add(self.body, shape)
 
@@ -188,6 +191,8 @@ class Stickman:
         self.space.add(top, top_shape)
 
         joints = [] # list of [body, shape]
+        p = top.position
+        v = 0
 
         for i, j in zip(config['jointDistances'], config['jointMasses']):
             '''
@@ -195,8 +200,13 @@ class Stickman:
             relative to the top of the swing
             '''
             point = pymunk.Body(j, 100)
-            point.position = top.position + (i * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180)))
-            point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
+            v =(i * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180)))
+            point_shape = Segment(p, v, 5)
+            print(p)
+            p = p+v
+            #point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
+            
+            #point_shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
             # if the first joint, join to the top, otherwise join to the preceding joint
             if len(joints) == 0:
                 pivot = pymunk.PinJoint(top, point, (0,0))
@@ -205,7 +215,7 @@ class Stickman:
             pivot.collide_bodies = False
             joints.append([point, point_shape])
 
-            self.space.add(point, point_shape)
+            #self.space.add(point, point_shape)
             self.space.add(pivot)
 
         self.swingVector = config['swingLength'] * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180))
