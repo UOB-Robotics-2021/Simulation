@@ -1,0 +1,8 @@
+{
+  "swingWithPerson" : {
+    "topPosition" : [300, 300],
+    "jointLocations" : [[10, 200]],
+    "jointMasses" : [1],
+	"person" : 10
+  }
+}
