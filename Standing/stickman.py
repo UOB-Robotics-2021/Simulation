@@ -254,23 +254,23 @@ class Stickman:
         self.lowerLegVector = self.dirVec("lowerLeg", scale)
         self.lowerLeg = Segment(self.footPosition, self.lowerLegVector, self.limbMass("lowerLeg"))
         self.kneePosition = self.vectorSum(self.footPosition, self.lowerLegVector)
-        self.lowerLegMotor = pymunk.SimpleMotor(b0, self.lowerLeg.body, 0)
-        self.space.add(self.lowerLegMotor)
+        #self.lowerLegMotor = pymunk.SimpleMotor(b0, self.lowerLeg.body, 0)
+        #self.space.add(self.lowerLegMotor)
         
         #Generate upper leg
         self.upperLegVector = self.dirVec("upperLeg", scale)
         self.upperLeg = Segment(self.kneePosition, self.upperLegVector, self.limbMass("upperLeg"))
         self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, self.lowerLegVector)
-        self.kneeMotor = pymunk.SimpleMotor(b0, self.upperLeg.body, 0)
-        self.space.add(self.kneeMotor)
+        #self.kneeMotor = pymunk.SimpleMotor(b0, self.upperLeg.body, 0)
+        #self.space.add(self.kneeMotor)
 
         #Generate pelvis and torso
         self.pelvisPosition = self.vectorSum(self.kneePosition, self.upperLegVector)
         self.torsoVector = self.dirVec("torso", scale)
         self.torso = Segment(self.pelvisPosition, self.torsoVector, self.limbMass("torso"))
         self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, self.upperLegVector)
-        self.pelvisMotor = pymunk.SimpleMotor(b0, self.torso.body, 0)
-        self.space.add(self.pelvisMotor)
+        #self.pelvisMotor = pymunk.SimpleMotor(b0, self.torso.body, 0)
+        #self.space.add(self.pelvisMotor)
         
         #Generate shoulder and upper arm
         self.shoulderPosition = self.vectorSum(self.pelvisPosition, self.torsoVector)
@@ -283,12 +283,12 @@ class Stickman:
         self.lowerArmVector = (self.swing['rod'][hand_index][0].position) - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         #self.lowerArm.body.body_type = 0
-        self.lowerArmMotor = pymunk.SimpleMotor(b0, self.lowerArm.body, 0)
-        space.add(self.lowerArmMotor)
+        #self.lowerArmMotor = pymunk.SimpleMotor(b0, self.lowerArm.body, 0)
+        #space.add(self.lowerArmMotor)
        
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
-        self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
-        space.add(self.elbowMotor)
+        #self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
+        #space.add(self.elbowMotor)
         
         #Generate head
         headRadius = self.config["head"][0]
@@ -302,7 +302,7 @@ class Stickman:
 
         #Attack stick figure to swing
         self.holdHand = pymunk.PinJoint(self.lowerArm.body, self.swing['rod'][hand_index][0], self.lowerArmVector)
-        self.holdHand.max_force = 1
+        
         
         
         self.space.add(self.holdHand)
@@ -379,7 +379,7 @@ class Stickman:
         
        
         #print(self.pelvisAngle()
-        
+        """
         if self.kneeMotor.rate != 0:
             x0 = self.upperLeg.body.position[0]
             x1 = self.torso.body.position[0]
@@ -410,7 +410,8 @@ class Stickman:
         else:
             pass
         
-        
+        """
+        pass
     
     def kneeAngle(self):
         
