@@ -1,6 +1,7 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 900 ]
+    "gravity": [ 0, 900 ],
+    "damping": 1
   },
   "LswingConfig":{
   "topPosition": [400,50],
