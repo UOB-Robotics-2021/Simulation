@@ -30,6 +30,7 @@ except:
 # Set-up environment
 space = pymunk.Space()
 space.gravity = config['environmentConfig']["gravity"]
+space.damping = 0.9
 b0 = space.static_body
 
 size = w, h = 600, 500
@@ -54,7 +55,7 @@ class PivotJoint:
         space.add(joint)
 
 class Segment:
-    def __init__(self, p0, v, m=10, radius=2):
+    def __init__(self, p0, v, m=10, radius=3):
         self.body = pymunk.Body()
         self.body.position = p0
         shape = pymunk.Segment(self.body, (0, 0), v, radius)
@@ -371,42 +372,54 @@ class Stickman:
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
-        if self.elbowAngle() < 10:
+        if self.elbowAngle() < config["jointConstraints"]["elbowExtension"]:
             self.flexElbow()
-            print("Flexing")
+            print("Flexing elbow")
         if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
             self.extendElbow()
-            print("Extending")
+            print("Extending elbow")
+        if self.kneeAngle() < config["jointConstraints"]["kneeExtension"]:
+            self.flexKnee()
+            print("Flexing knee")
+        if self.kneeAngle() > config["jointConstraints"]["kneeFlexion"]:
+            self.extendKnee()
+            print("Extending knee")
+        if self.pelvisAngle() < config["jointConstraints"]["pelvisExtension"]:
+            self.flexPelvis()
+            print("Flexing pelvis")
+        if self.pelvisAngle() > config["jointConstraints"]["pelvisFlexion"]:
+            self.extendPelvis()
+            print("Extending pelvis")
 
-        if self.kneeMotor.rate != 0:
-            x0 = self.upperLeg.body.position[0]
-            x1 = self.torso.body.position[0]
+        #if self.kneeMotor.rate != 0:
+        #    x0 = self.upperLeg.body.position[0]
+        #    x1 = self.torso.body.position[0]
             
-            if x1 > x0 and self.upKey==1: 
-                self.stayStill()
-                print("max extension constaint reached")
-            elif self.kneeAngle() > config["jointConstraints"]["kneeFlexion"] and self.downKey == 1:
-                self.kneeMotor.rate = 0
-                print("max flexion constraint reached")
-        elif self.pelvisMotor.rate < 0:
-            if self.pelvisAngle() > config["jointConstraints"]["pelvisFlexion"] and self.rightKey == 1:
-                self.pelvisMotor.rate = 0
-                print("max pelvis flexion")
-        elif self.pelvisMotor.rate > 0:
-            if self.pelvisAngle() < config["jointConstraints"]["pelvisExtension"] and self.leftKey == 1:
-                self.pelvisMotor.rate = 0
-                print("max pelvis extension")
-        elif self.elbowMotor.rate > 0:
-            if self.elbowAngle() < 10:
-                self.elbowMotor.rate = 0
-                print("max elbow extension")
-                print(self.elbowAngle())
-        elif self.elbowMotor.rate < 0:
-            if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
-                print("max elbow flexion")
-                self.elbowMotor.rate = 0
-        else:
-            pass
+        #    if x1 > x0 and self.upKey==1: 
+        #        self.stayStill()
+        #        print("max extension constaint reached")
+        #    elif self.kneeAngle() > config["jointConstraints"]["kneeFlexion"] and self.downKey == 1:
+        #        self.kneeMotor.rate = 0
+        #        print("max flexion constraint reached")
+        #elif self.pelvisMotor.rate < 0:
+        #    if self.pelvisAngle() > config["jointConstraints"]["pelvisFlexion"] and self.rightKey == 1:
+        #        self.pelvisMotor.rate = 0
+        #        print("max pelvis flexion")
+        #elif self.pelvisMotor.rate > 0:
+        #    if self.pelvisAngle() < config["jointConstraints"]["pelvisExtension"] and self.leftKey == 1:
+        #        self.pelvisMotor.rate = 0
+        #        print("max pelvis extension")
+        #elif self.elbowMotor.rate > 0:
+        #    if self.elbowAngle() < config["jointConstraints"]["elbowExtension"]:
+        #        self.elbowMotor.rate = 0
+        #        print("max elbow extension")
+        #        print(self.elbowAngle())
+        #elif self.elbowMotor.rate < 0:
+        #    if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
+        #        print("max elbow flexion")
+        #        self.elbowMotor.rate = 0
+        #else:
+        #    pass
         
     # Methods to measure angles
     def kneeAngle(self):
@@ -461,7 +474,7 @@ class Stickman:
         return angle
 
 
-angle = 0
+angle = 45
 
 man = Stickman(space=space, config=config, scale=0.7, lean=20, theta=angle)
 
