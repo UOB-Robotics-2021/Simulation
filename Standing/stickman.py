@@ -54,15 +54,14 @@ class PivotJoint:
         space.add(joint)
 
 class Segment:
-    def __init__(self, p0, v, m=10, radius=2, layer=None):
+    def __init__(self, p0, v, m=10, radius=2):
         self.body = pymunk.Body()
         self.body.position = p0
         shape = pymunk.Segment(self.body, (0, 0), v, radius)
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
-        if layer is not None:
-            shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ layer)
+        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 2)
         shape.color = (0, 255, 0, 0)
         space.add(self.body, shape)
 
@@ -74,12 +73,12 @@ class Circle:
         shape.density = 0.01
         shape.friction = 0.5
         shape.elasticity = 1
-        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 1)
+        shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 2)
         space.add(self.body, shape)
 
 # Class to build environment
 class App:
-    def __init__(self, man):
+    def __init__(self, stickFigure):
         pygame.init()
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode(size)
@@ -87,16 +86,43 @@ class App:
         self.running = True
         self.gif = 0
         self.images = []
-        self.stickFigure = man
+        self.stickFigure = stickFigure
         self.swing = self.stickFigure.swing
         
         
     def run(self):
         while self.running:
-            
-            #Handle user interaction
             for event in pygame.event.get():
-                self.do_event(event)
+                if event.type == pygame.QUIT:
+                    running = False
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_UP]:
+                print(self.stickFigure.kneeAngle())
+                self.stickFigure.upKey = 1
+                self.stickFigure.downKey = 0
+                self.stickFigure.extendKnee()
+            elif keys[pygame.K_DOWN]:
+                self.stickFigure.flexKnee()
+                self.stickFigure.downKey = 1
+                self.stickFigure.upKey = 0
+            elif keys[pygame.K_RIGHT]:
+                self.stickFigure.rightKey = 1
+                self.stickFigure.leftKey = 0
+                self.stickFigure.flexPelvis()
+            elif keys[pygame.K_LEFT]:
+                self.stickFigure.rightKey = 0
+                self.stickFigure.leftKey = 1
+                self.stickFigure.extendPelvis()
+            elif keys[pygame.K_w]:
+                print("extend elbow", self.stickFigure.elbowAngle())
+                self.stickFigure.extendElbow()
+            elif keys[pygame.K_s]:
+                print("flex elbow", self.stickFigure.elbowAngle())
+                self.stickFigure.flexElbow()
+            else:
+                self.stickFigure.stayStill()
+
+
             self.stickFigure.applyConstraints()
             self.draw()
             self.clock.tick(fps)
@@ -129,12 +155,12 @@ class App:
             self.stickFigure.leftKey = 1
             self.stickFigure.extendPelvis()
         elif keys[pygame.K_w]:
-            print("flex elbow")
+            print("extend elbow")
             self.stickFigure.extendElbow()
         elif keys[pygame.K_s]:
             print("flex elbow")
             self.stickFigure.flexElbow()
-        elif keys[pygame.K_SPACE]:
+        else:
             self.stickFigure.stayStill()
         
     def draw(self):
@@ -160,7 +186,7 @@ class App:
                                     optimize=True, duration=1000//fps, loop=0)
                 self.images = []
 
-# Code to generate figure
+# Code to generate figure and swing
 class Stickman:
     def __init__(self, space, config, scale=1, lean=0, theta=0):
         """
@@ -230,6 +256,7 @@ class Stickman:
         self.lowerLeg = Segment(self.footPosition, self.lowerLegVector, self.limbMass("lowerLeg"))
         self.kneePosition = self.vectorSum(self.footPosition, self.lowerLegVector)
         self.lowerLegMotor = pymunk.SimpleMotor(b0, self.lowerLeg.body, 0)
+        self.lowerLegMotor.collide_bodies = False
         self.space.add(self.lowerLegMotor)
         
         #Generate upper leg
@@ -237,6 +264,7 @@ class Stickman:
         self.upperLeg = Segment(self.kneePosition, self.upperLegVector, self.limbMass("upperLeg"))
         self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, self.lowerLegVector)
         self.kneeMotor = pymunk.SimpleMotor(b0, self.upperLeg.body, 0)
+        self.kneeMotor.collide_bodies = False
         self.space.add(self.kneeMotor)
 
         #Generate pelvis and torso
@@ -245,6 +273,7 @@ class Stickman:
         self.torso = Segment(self.pelvisPosition, self.torsoVector, self.limbMass("torso"))
         self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, self.upperLegVector)
         self.pelvisMotor = pymunk.SimpleMotor(b0, self.torso.body, 0)
+        self.pelvisMotor.collide_bodies = False
         self.space.add(self.pelvisMotor)
         
         #Generate shoulder and upper arm
@@ -259,6 +288,7 @@ class Stickman:
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
         self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
+        self.elbowMotor.collide_bodies = False
         space.add(self.elbowMotor)
         
         #Generate head
@@ -267,14 +297,21 @@ class Stickman:
         self.head = Circle(headPosition, headRadius)
         self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
 
-        self.headPosition = self.shoulderPosition + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
-        self.head = Circle(self.headPosition, headRadius)
-        self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
-
         #Attack stick figure to swing
-        self.holdHand = PinJoint(self.lowerArm.body, self.swing['rod'][hand_index][0], self.lowerArmVector)
-        self.holdFoot = PinJoint(self.lowerLeg.body, self.swing['rod'][foot_index][0], (0, 0))
+        self.holdHand = PinJoint(self.lowerArm.body, self.getJointByNumber(hand_index), self.lowerArmVector)
+        self.holdFoot = PinJoint(self.lowerLeg.body, self.getJointByNumber(foot_index), (0, 0))
 
+        # Keys
+        self.upKey = 0
+        self.downKey = 0
+        self.rightKey = 0
+        self.leftKey = 0
+        self.keys = {'upKey': self.upKey, 'downKey': self.downKey, 'rightKey': self.rightKey, 'leftKey': self.leftKey}
+
+        # Motors
+        self.motors = {'lowerLegMotor': self.lowerLegMotor, 'kneeMotor': self.kneeMotor, 'pelvisMotor': self.pelvisMotor, 'elbowMotor': self.elbowMotor}
+
+    # Methods used to create stickman
     def dirVec(self, limb, scale):
         """
         Calculates the vector for the limb.
@@ -293,17 +330,8 @@ class Stickman:
         Returns the sum of two vectors.
         """
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
-    
-    def legAngle(self):
-        """
-        Returns the angle between the upper and lower leg.
-        """
-        upperLegAngle = self.upperLeg.body.angle
-        lowerLegAngle = self.lowerLeg.body.angle
-        legAngle = upperLegAngle - lowerLegAngle
 
-        return -legAngle
-    
+    # Methods to move the stickman
     def extendKnee(self):
         x0 = self.upperLeg.body.position[0]
         x1 = self.torso.body.position[0]
@@ -333,19 +361,23 @@ class Stickman:
         self.elbowMotor.rate = 1
     
     def stayStill(self):
-        self.kneeMotor.rate = 0
-        self.pelvisMotor.rate = 0
-        self.elbowMotor.rate = 0
+        for key in self.keys.keys():
+            self.keys[key] = 0
+
+        for motor in self.motors.keys():
+            self.motors[motor].rate = 0
         
     def applyConstraints(self):
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
-        #print(self.elbowAngle())
-        
-       
-        
-       
+        if self.elbowAngle() < 10:
+            self.flexElbow()
+            print("Flexing")
+        if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
+            self.extendElbow()
+            print("Extending")
+
         if self.kneeMotor.rate != 0:
             x0 = self.upperLeg.body.position[0]
             x1 = self.torso.body.position[0]
@@ -376,8 +408,7 @@ class Stickman:
         else:
             pass
         
-        
-    
+    # Methods to measure angles
     def kneeAngle(self):
         
         upperLegVector = self.torso.body.position - self.upperLeg.body.position
@@ -430,9 +461,7 @@ class Stickman:
         return angle
 
 
-angle = 45
-swingPosition = (300, 50)
-swingLength = 200
+angle = 0
 
 man = Stickman(space=space, config=config, scale=0.7, lean=20, theta=angle)
 

@@ -7,10 +7,10 @@
   "joints" : [[45, 100, 10], [45,100,10],[135, 100, 10], [135, 1, 10],[-110, 200, 10]]
   },
   "swingConfig": {
-    "topPosition": [ 300, 50 ],
+    "topPosition": [ 300, 200 ],
     "swingLength": 200,
     "jointDistances": [ 100, 200 ],
-    "jointMasses": [ 10, 10, 10, 10, 10, 10, 10, 10 ]
+    "jointMasses": [ 10, 10 ]
   },
   "rodSwingConfig":{
     "topPosition": [ 300, 50 ],
