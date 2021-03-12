@@ -20,16 +20,16 @@
   },
   "triangleSwingConfig": {
   "topPosition": [ 300, 50 ],
-  "jointDistances": [[-50,200], [-50,100]],
+  "jointDistances": [[-50,200], [-50,80]],
   "jointMasses": [ 20, 10, 10]
   },
   "squatStandConfig": {
     "anklePosition": [ 200, 200 ],
     "foot": [ 270, 20, 2 ],
     "lowerLeg": [ -70, 44, 10 ],
-    "upperLeg": [ -130, 48, 20 ],
+    "upperLeg": [ -220, 48, 20 ],
     "torso": [ -90, 65, 20 ],
-    "upperArm": [ 70, 35, 6 ],
+    "upperArm": [ 20, 35, 6 ],
     "lowerArm": [ 0, 0, 6 ],
     "head": [ 10, 5 ]
   },
@@ -39,6 +39,7 @@
      "pelvisExtension": 30,
      "pelvisHyperExtension": 15,
      "kneeFlexion": 50,
+     "kneeExtension": 195,
      "shoulderFlexion": 90,
      "shoulderExtension": 90,
      "elbowFlexion": 150,

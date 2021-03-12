@@ -112,13 +112,18 @@ class App:
             self.running = False
         
         keys = pygame.key.get_pressed()
+        
+        self.stickFigure.keys = keys
+        
         if keys[pygame.K_UP]:
             print(self.stickFigure.kneeAngle())
             self.stickFigure.upKey = 1
             self.stickFigure.downKey = 0
-            self.stickFigure.extendKnee()
+            #self.stickFigure.extendKnee()
+            self.stickFigure.driveKnee("extension", motorSpeed = 3, angle=120)
         elif keys[pygame.K_DOWN]:
-            self.stickFigure.flexKnee()
+            #self.stickFigure.flexKnee()
+            self.stickFigure.driveKnee("flexion")
             self.stickFigure.downKey = 1
             self.stickFigure.upKey = 0
         elif keys[pygame.K_RIGHT]:
@@ -212,7 +217,7 @@ class Stickman:
         self.lowerArmVector = swing.getJointByNumber(hand_index).position - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
-        self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
+        self.elbowMotor = pymunk.SimpleMotor(b0, self.lowerArm.body, 0)
         space.add(self.elbowMotor)
         
         #Generate head
@@ -236,6 +241,9 @@ class Stickman:
         self.rightKey = 0
         self.leftKey = 0
         self.stoppedMotion = 0
+        
+        self.targetKneeAngle = None
+        self.kneeMotion = None
        
     def dirVec(self, limb, scale):
         angle = self.config[limb][0] + self.theta
@@ -247,14 +255,58 @@ class Stickman:
     def vectorSum(self, v1, v2):
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
     
+    
+    def driveKnee(self, motionType, motorSpeed=None, angle=None):
+        """
+        Flexes or extends the knee by rotating the upper leg anti-clockwise or clockwise using the knee motor
+        
+        Parameters:
+            motorSpeed (positive float): rate at which to turn the motor
+            \n angle (positive float): desired final angle between upper leg and lower leg
+            \n motionType (string): can be flexion or extension for anti-clockwise and clockwise knee motor motion
+        
+        """
+        
+        #Define parameters
+        if motorSpeed is None:
+            motorSpeed = config["jointConstraints"]["jointSpeed"]
+        else:
+            motorSpeed = abs(motorSpeed)
+        
+        if motionType == "extension":
+            motorSpeed = -motorSpeed
+            if angle is None:
+                angle = config["jointConstraints"]["kneeExtension"]
+            else:
+                angle = abs(angle)
+                if angle > config["jointConstraints"]["kneeExtension"]:
+                    angle = config["jointConstraints"]["kneeExtension"]
+        elif motionType == "flexion":
+            if angle is None:
+                angle = config["jointConstraints"]["kneeFlexion"]
+            else:
+                angle = abs(angle)
+                if angle < config["jointConstraints"]["kneeFlexion"]:
+                    angle = config["jointConstraints"]["kneeFlexion"]
+        else:
+            print("motionType must be flexion or extension")
+        
+        #Drive motor
+        self.kneeMotor.rate = motorSpeed
+        self.targetKneeAngle = angle
+        self.kneeMotion = motionType
+        print("target angle:", self.targetKneeAngle)
+        
+    
     def extendKnee(self):
         x0 = self.upperLeg.body.position[0]
         x1 = self.torso.body.position[0]
-        if x0 > x1:
+        if x1 > x0 and self.kneeAngle() > config["jointConstraints"]["kneeExtension"]: 
+             print("max extension reached")
+        else:
             self.kneeMotor.rate = -config["jointConstraints"]["jointSpeed"]
             self.kneeAngle()
-        else:
-            print("max extension reached")
+
             
     def flexKnee(self):
         if self.kneeAngle() < config["jointConstraints"]["kneeFlexion"]:
@@ -285,6 +337,7 @@ class Stickman:
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
         #print(self.elbowAngle())
+        """
         x0 = self.upperLeg.body.position[0]
         x1 = self.torso.body.position[0]
         if x1 > x0:
@@ -301,20 +354,32 @@ class Stickman:
             print("Stop elbow extension")
         if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
             print("stop elbow flexion")
-        
-       
-        
-       
+        """
+        kneeAngle = self.kneeAngle()
+        if self.keys[pygame.K_DOWN]==0 and self.kneeMotion == "extension" and ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
+            self.stayStill()#
+           
+            print("max extension constaint reached", config["jointConstraints"]["kneeExtension"], self.targetKneeAngle,  self.kneeAngle())
+        elif self.keys[pygame.K_UP]==0 and self.kneeMotion == "flexion" and self.torso.body.position[0] < self.upperLeg.body.position[0] and self.downKey == 1 and ((kneeAngle < config["jointConstraints"]["kneeFlexion"]) or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)):
+            print(kneeAngle, self.targetKneeAngle)
+            self.stayStill()
+            print("max flexion constaint reached", self.kneeAngle())
+        """
         if self.kneeMotor.rate != 0:
-            x0 = self.upperLeg.body.position[0]
-            x1 = self.torso.body.position[0]
+            kneeAngle = self.kneeAngle()
+            v1 = self.torso.body.position - self.upperLeg.body.position
+            v0 = self.upperLeg.body.position - self.lowerLeg.body.position
             
-            if x1 > x0 and self.upKey==1: 
+            
+            
+            if ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
+                self.stayStill()#
+               
+                print("max extension constaint reached", config["jointConstraints"]["kneeExtension"], self.kneeAngle())
+            elif self.torso.body.position[0] < self.upperLeg.body.position[0] and self.downKey == 1 and ((kneeAngle < config["jointConstraints"]["kneeFlexion"]) or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)):
+                print(kneeAngle, self.targetKneeAngle)
                 self.stayStill()
-                print("max extension constaint reached")
-            elif self.kneeAngle() > config["jointConstraints"]["kneeFlexion"] and self.downKey == 1:
-                self.kneeMotor.rate = 0
-                print("max flexion constraint reached")
+                print("max flexion constaint reached", self.kneeAngle())
         elif self.pelvisMotor.rate < 0:
             if self.pelvisAngle() > config["jointConstraints"]["pelvisFlexion"] and self.rightKey == 1:
                 self.pelvisMotor.rate = 0
@@ -334,12 +399,13 @@ class Stickman:
                 self.elbowMotor.rate = 0
         else:
             pass
-        
+        """
         
     
     def kneeAngle(self):
         
-        upperLegVector = self.torso.body.position - self.upperLeg.body.position
+        #upperLegVector = self.torso.body.position - self.upperLeg.body.position
+        upperLegVector = self.upperLeg.body.position - self.torso.body.position
         lowerLegVector = self.upperLeg.body.position - self.lowerLeg.body.position
         
         v0  = upperLegVector / np.linalg.norm(upperLegVector)
@@ -367,7 +433,8 @@ class Stickman:
         return angle
     
     def elbowAngle(self):
-        upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
+        #upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
+        upperArmVector = self.lowerArm.body.position - self.upperArm.body.position
         lowerArmVector = self.lowerArm.body.position - self.swing.getJointByNumber(self.hand_index).position
         
         v0  = upperArmVector / np.linalg.norm(upperArmVector)
