@@ -112,15 +112,12 @@ class App:
             self.running = False
         
         keys = pygame.key.get_pressed()
-        
-        self.stickFigure.keys = keys
-        
         if keys[pygame.K_UP]:
             print(self.stickFigure.kneeAngle())
             self.stickFigure.upKey = 1
             self.stickFigure.downKey = 0
             #self.stickFigure.extendKnee()
-            self.stickFigure.driveKnee("extension", motorSpeed = 3, angle=120)
+            self.stickFigure.driveKnee("extension")
         elif keys[pygame.K_DOWN]:
             #self.stickFigure.flexKnee()
             self.stickFigure.driveKnee("flexion")
@@ -217,7 +214,7 @@ class Stickman:
         self.lowerArmVector = swing.getJointByNumber(hand_index).position - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
-        self.elbowMotor = pymunk.SimpleMotor(b0, self.lowerArm.body, 0)
+        self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
         space.add(self.elbowMotor)
         
         #Generate head
@@ -243,7 +240,6 @@ class Stickman:
         self.stoppedMotion = 0
         
         self.targetKneeAngle = None
-        self.kneeMotion = None
        
     def dirVec(self, limb, scale):
         angle = self.config[limb][0] + self.theta
@@ -294,8 +290,6 @@ class Stickman:
         #Drive motor
         self.kneeMotor.rate = motorSpeed
         self.targetKneeAngle = angle
-        self.kneeMotion = motionType
-        print("target angle:", self.targetKneeAngle)
         
     
     def extendKnee(self):
@@ -355,16 +349,10 @@ class Stickman:
         if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
             print("stop elbow flexion")
         """
-        kneeAngle = self.kneeAngle()
-        if self.keys[pygame.K_DOWN]==0 and self.kneeMotion == "extension" and ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
-            self.stayStill()#
-           
-            print("max extension constaint reached", config["jointConstraints"]["kneeExtension"], self.targetKneeAngle,  self.kneeAngle())
-        elif self.keys[pygame.K_UP]==0 and self.kneeMotion == "flexion" and self.torso.body.position[0] < self.upperLeg.body.position[0] and self.downKey == 1 and ((kneeAngle < config["jointConstraints"]["kneeFlexion"]) or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)):
-            print(kneeAngle, self.targetKneeAngle)
-            self.stayStill()
-            print("max flexion constaint reached", self.kneeAngle())
-        """
+        
+        
+        
+       
         if self.kneeMotor.rate != 0:
             kneeAngle = self.kneeAngle()
             v1 = self.torso.body.position - self.upperLeg.body.position
@@ -372,9 +360,8 @@ class Stickman:
             
             
             
-            if ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
-                self.stayStill()#
-               
+            if v1[0] > v0[0] and self.upKey==1 and ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
+                self.stayStill()
                 print("max extension constaint reached", config["jointConstraints"]["kneeExtension"], self.kneeAngle())
             elif self.torso.body.position[0] < self.upperLeg.body.position[0] and self.downKey == 1 and ((kneeAngle < config["jointConstraints"]["kneeFlexion"]) or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)):
                 print(kneeAngle, self.targetKneeAngle)
@@ -399,7 +386,7 @@ class Stickman:
                 self.elbowMotor.rate = 0
         else:
             pass
-        """
+        
         
     
     def kneeAngle(self):
@@ -433,8 +420,7 @@ class Stickman:
         return angle
     
     def elbowAngle(self):
-        #upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
-        upperArmVector = self.lowerArm.body.position - self.upperArm.body.position
+        upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
         lowerArmVector = self.lowerArm.body.position - self.swing.getJointByNumber(self.hand_index).position
         
         v0  = upperArmVector / np.linalg.norm(upperArmVector)
