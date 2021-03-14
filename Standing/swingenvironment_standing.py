@@ -43,7 +43,7 @@ class Swing():
 
         joints.append([top, top_shape])
 
-        for i, j in zip(config['jointLocations'], config['jointMasses']):
+        for i, j in zip([[50, 100],[100, 200]], config['jointMasses']):
             '''
             Iterate through the list of coordinates as specified by jointLocations,
             relative to the top of the swing

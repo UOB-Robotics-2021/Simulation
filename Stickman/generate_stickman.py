@@ -120,7 +120,7 @@ class App:
             self.draw()
             self.clock.tick(fps)
             
-            self.stick_figure.apply_constraints(m)
+            #self.stick_figure.apply_constraints(m)
             
             for i in range(steps):
                 space.step(1/fps/steps)
@@ -179,14 +179,14 @@ class Stickman:
         
         #Generate foot
         self.anklePosition = config["anklePosition"] + self.offset
-        self.footVector = self.dirVec("foot", theta, scale)
-        self.foot = Segment(self.anklePosition, self.footVector, self.limbMass("foot"))
+        #self.footVector = self.dirVec("foot", theta, scale)
+        #self.foot = Segment(self.anklePosition, self.footVector, self.limbMass("foot"))
 
         #Generate lower leg 
         self.lowerLegVector = self.dirVec("lowerLeg", theta, scale)
         self.lowerLeg = Segment(self.anklePosition, self.lowerLegVector, self.limbMass("lowerLeg"))
         
-        self.ankle = PivotJoint(self.foot.body, self.lowerLeg.body, (0,0))
+        #self.ankle = PivotJoint(self.foot.body, self.lowerLeg.body, (0,0))
 
         #Generate upper leg
         self.kneePosition = vector_sum(self.anklePosition, self.lowerLegVector)
