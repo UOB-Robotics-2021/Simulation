@@ -200,14 +200,20 @@ class Stickman:
         theta: The rotation of the entire system
         """
         self.space = space
+        self.config = config
+        self.scale = scale
+        self.lean = lean
+        self.theta = theta
+        self.stickFigureAngle = self.theta - self.lean
+        self.swingAngle = self.theta + 90
 
-        self.swing = self.generateSwing(config['swingConfig'], theta + 90)
+        self.swing = self.generateSwing()
+        self.generateStickman()
 
-        self.config = config['squatStandConfig']
-        self.generateStickman(scale, theta - lean)
-
-    def generateSwing(self, config, swingAngle):
+    def generateSwing(self):
         # specifies the top of the swing as defined by topPosition
+        config = self.config["swingConfig"]
+        
         top = pymunk.Body(10,1000000, pymunk.Body.STATIC)
         top.position = Vec2d(*config['topPosition'])
         top_shape = pymunk.Poly.create_box(top, (20,20))
@@ -222,7 +228,7 @@ class Stickman:
             relative to the top of the swing
             '''
             point = pymunk.Body(j, 100)
-            point.position = top.position + (i * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180)))
+            point.position = top.position + (i * Vec2d(np.cos(self.swingAngle * np.pi/180), np.sin(self.swingAngle * np.pi/180)))
             point_shape = pymunk.Segment(point, (0,0), (0,0), 5)
             point_shape.filter = pymunk.ShapeFilter(group = 1, categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0)
             # if the first joint, join to the top, otherwise join to the preceding joint
@@ -236,25 +242,24 @@ class Stickman:
             self.space.add(point, point_shape)
             self.space.add(pivot)
 
-        self.swingVector = config['swingLength'] * Vec2d(np.cos(swingAngle * np.pi/180), np.sin(swingAngle * np.pi/180))
+        self.swingVector = config['swingLength'] * Vec2d(np.cos(self.swingAngle * np.pi/180), np.sin(self.swingAngle * np.pi/180))
 
         return {'rod' : joints, 'top' : [top, top_shape]}
     
     def getJointByNumber(self, num):
         return self.swing['rod'][num][0]
         
-    def generateStickman(self, scale, theta):
+    def generateStickman(self):
         # In the json file, the format for limbs is --> "limb": [angle, length, mass].
         # The head has format --> "head": [radius, mass]
         foot_index = -1
         hand_index = int(len(self.swing['rod'])/2-1)
         self.hand_index, self.foot_index = hand_index, foot_index
         self.maxLegAngles = [0, np.pi/2]
-        self.theta = theta
-        self.footPosition = self.swing['rod'][foot_index][0].position# + self.swingVector
+        self.footPosition = self.swing['rod'][foot_index][0].position
         
         #Generate lower leg and knee
-        self.lowerLegVector = self.dirVec("lowerLeg", scale)
+        self.lowerLegVector = self.dirVec("lowerLeg")
         self.lowerLeg = Segment(self.footPosition, self.lowerLegVector, self.limbMass("lowerLeg"))
         self.kneePosition = self.vectorSum(self.footPosition, self.lowerLegVector)
         self.footMotor = pymunk.SimpleMotor(b0, self.lowerLeg.body, 0)
@@ -262,7 +267,7 @@ class Stickman:
         self.space.add(self.footMotor)
         
         #Generate upper leg
-        self.upperLegVector = self.dirVec("upperLeg", scale)
+        self.upperLegVector = self.dirVec("upperLeg")
         self.upperLeg = Segment(self.kneePosition, self.upperLegVector, self.limbMass("upperLeg"))
         self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, self.lowerLegVector)
         self.kneeMotor = pymunk.SimpleMotor(b0, self.upperLeg.body, 0)
@@ -271,7 +276,7 @@ class Stickman:
 
         #Generate pelvis and torso
         self.pelvisPosition = self.vectorSum(self.kneePosition, self.upperLegVector)
-        self.torsoVector = self.dirVec("torso", scale)
+        self.torsoVector = self.dirVec("torso")
         self.torso = Segment(self.pelvisPosition, self.torsoVector, self.limbMass("torso"))
         self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, self.upperLegVector)
         self.pelvisMotor = pymunk.SimpleMotor(b0, self.torso.body, 0)
@@ -280,7 +285,7 @@ class Stickman:
         
         #Generate shoulder and upper arm
         self.shoulderPosition = self.vectorSum(self.pelvisPosition, self.torsoVector)
-        self.upperArmVector = self.dirVec("upperArm", scale)
+        self.upperArmVector = self.dirVec("upperArm")
         self.upperArm = Segment(self.shoulderPosition, self.upperArmVector, self.limbMass("upperArm"))
         self.shoulder = PivotJoint(self.torso.body, self.upperArm.body, self.torsoVector)
         
@@ -294,10 +299,10 @@ class Stickman:
         space.add(self.elbowMotor)
         
         #Generate head
-        headRadius = self.config["head"][0]
-        headPosition = self.shoulderPosition + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180)))
+        headRadius = self.config['squatStandConfig']["head"][0]
+        headPosition = self.shoulderPosition + (headRadius * Vec2d(np.sin(self.stickFigureAngle * np.pi/180), -np.cos(self.stickFigureAngle * np.pi/180)))
         self.head = Circle(headPosition, headRadius)
-        self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(theta * np.pi/180), -np.cos(theta * np.pi/180))))
+        self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(self.stickFigureAngle * np.pi/180), -np.cos(self.stickFigureAngle * np.pi/180))))
 
         #Attack stick figure to swing
         self.holdHand = PinJoint(self.lowerArm.body, self.getJointByNumber(hand_index), self.lowerArmVector)
@@ -322,18 +327,18 @@ class Stickman:
                        'elbowMotor': self.elbowMotor}
 
     # Methods used to create stickman
-    def dirVec(self, limb, scale):
+    def dirVec(self, limb):
         """
         Calculates the vector for the limb.
         """
-        angle = self.config[limb][0] + self.theta
-        return scale * self.config[limb][1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
+        angle = self.config['squatStandConfig'][limb][0] + self.stickFigureAngle
+        return self.scale * self.config['squatStandConfig'][limb][1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
     
     def limbMass(self, limb):
         """
         Returns the mass of the limb.
         """
-        return self.config[limb][2]
+        return self.config['squatStandConfig'][limb][2]
 
     def vectorSum(self, v1, v2):
         """
