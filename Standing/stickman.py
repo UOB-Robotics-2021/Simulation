@@ -345,7 +345,7 @@ class Stickman:
         # Motors
         self.motors = {'footMotor': self.footMotor, 'kneeMotor': self.kneeMotor, 'pelvisMotor': self.pelvisMotor,
                        'shoulderMotor': self.shoulderMotor, 'elbowMotor': self.elbowMotor}
-
+        
     # Methods used to create stickman
     def dirVec(self, limb):
         """
@@ -462,10 +462,24 @@ class Stickman:
         kneeAngle = self.kneeAngle()
         
         if self.kneeMotor.rate != 0:
-            if self.keys[pygame.K_DOWN]==0 and self.kneeMotion == "extension" and ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
-                self.stayStill()#
+            if (
+                    self.keys[pygame.K_DOWN]==0 #don't stop movement if user attempting to flex knee
+                    and self.kneeMotion == "extension" #only stop movement if knee undergoing extension
+                    and (
+                            (kneeAngle > config["jointConstraints"]["kneeExtension"])  #knee angle greater than constraint
+                            or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle) #knee angle greater than target
+                        )
+                    ): 
+                self.stayStill() 
                 print("Reached knee angle of", kneeAngle)
-            elif self.keys[pygame.K_UP]==0 and self.kneeMotion == "flexion" and self.torso.body.position[0] < self.upperLeg.body.position[0] and self.downKey == 1 and ((kneeAngle < config["jointConstraints"]["kneeFlexion"]) or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)):
+            elif (
+                    self.keys[pygame.K_UP]==0  #don't stop movement if user attempting to extend knee
+                    and self.kneeMotion == "flexion" #only stop movement if knee undergoing flexion
+                    and self.torso.body.position[0] < self.upperLeg.body.position[0] #knee must be in flexed position - possibly remove
+                    and (
+                            (kneeAngle < config["jointConstraints"]["kneeFlexion"]) #knee angle lower than flexion constraint
+                            or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)) #knee angle lower than target
+                    ):
                 self.stayStill()
                 print("Reached knee angle of", kneeAngle)
                 
