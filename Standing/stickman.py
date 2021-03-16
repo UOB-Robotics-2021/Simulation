@@ -125,13 +125,13 @@ class App:
         self.stickFigure.keys = keys
         
         if keys[pygame.K_UP]:
-            self.stickFigure.driveKnee("extension")
+            self.stickFigure.moveLimb("knee", "extension")
         elif keys[pygame.K_DOWN]:
-            self.stickFigure.driveKnee("flexion", motorSpeed=100)
+            self.stickFigure.moveLimb("knee", "flexion", motorSpeed=100)
         elif keys[pygame.K_RIGHT]:
-            self.stickFigure.flexPelvis()
+            self.stickFigure.moveLimb("pelvis", "flexion")
         elif keys[pygame.K_LEFT]:
-            self.stickFigure.extendPelvis()
+            self.stickFigure.moveLimb("pelvis", "extension")
         elif keys[pygame.K_w]:
             print("extend elbow")
             self.stickFigure.extendElbow()
@@ -221,7 +221,7 @@ class Stickman:
         self.swingVector = config['swingLength'] * Vec2d(np.cos(self.swingAngle * np.pi/180), np.sin(self.swingAngle * np.pi/180))
 
         return {'rod' : joints, 'top' : [top, top_shape]}
-    
+        
     def getJointByNumber(self, num):
         return self.swing['rod'][num][0]
         
@@ -290,7 +290,7 @@ class Stickman:
         self.holdHand = PinJoint(self.lowerArm.body, self.getJointByNumber(0), self.lowerArmVector)
         self.holdFoot = PinJoint(self.lowerLeg.body, self.getJointByNumber(foot_index), (0, 0))
         print(hand_index, foot_index)
-        self.previousKneeAngle = None
+      
 
         
         # Limbs
@@ -298,12 +298,31 @@ class Stickman:
                       'lowerArm': self.lowerArm}
 
         # Joint Relationships
-        self.joints = {'foot': 'lowerLeg', 'knee': 'upperLeg', 'pelvis': 'torso', 'shoulder': 'upperArm', 'elbow': 'lowerArm'}
+        self.joints = {
+                'foot': 'lowerLeg', 
+                'knee': 'upperLeg', 
+                'pelvis': 'torso', 
+                'shoulder': 'upperArm', 
+                'elbow': 'lowerArm'
+                }
+        
+        
+        self.joints = {
+                "knee": {"motor": self.kneeMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "flexionDirection": 1, "extensionDirection":-1, "flexionDirection": 1},
+                "foot": {"motor": self.footMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1},
+                "pelvis": {"motor": self.pelvisMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":1, "flexionDirection": -1},
+                "shoulder": {"motor": self.shoulderMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":1, "flexionDirection": -1},
+                "elbow": {"motor": self.elbowMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1}
+                }
 
         # Motors
         self.motors = {'footMotor': self.footMotor, 'kneeMotor': self.kneeMotor, 'pelvisMotor': self.pelvisMotor,
                        'shoulderMotor': self.shoulderMotor, 'elbowMotor': self.elbowMotor}
-
+        
+        self.targetAngles = {"knee":None}
+        
+        self.limbsInMotion = {"knee": None}
+        
     # Methods used to create stickman
     def dirVec(self, limb):
         """
@@ -322,23 +341,8 @@ class Stickman:
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
 
     # Methods to move the stickman
-    def moveLimb(self, joint, direction):
-        self.motors[joint + "Motor"].rate = direction
-    
-    
-    def driveKnee(self, motionType, motorSpeed=None, angle=None):
-        """
-        Flexes or extends the knee by rotating the upper leg anti-clockwise or clockwise using the knee motor
-        
-        Parameters:
-            motorSpeed (positive float): rate at which to turn the motor
-            \n angle (positive float): desired final angle between upper leg and lower leg
-            \n motionType (string): can be flexion or extension for anti-clockwise and clockwise knee motor motion
-        
-        """
-        
-        #Define parameters
-        
+    def moveLimb(self, joint, motionType, angle=None, motorSpeed=None):
+
         #If user not set motorSpeed or is set higher than max value in config file
         if motorSpeed is None or motorSpeed > config["jointConstraints"]["jointSpeed"]:
             motorSpeed = config["jointConstraints"]["jointSpeed"]
@@ -346,47 +350,32 @@ class Stickman:
             motorSpeed = abs(motorSpeed)
         
         if motionType == "extension":
-            motorSpeed = -motorSpeed
+            motorSpeed = self.joints[joint]["extensionDirection"]*motorSpeed
             if angle is None:
-                angle = config["jointConstraints"]["kneeExtension"]
+                angle = config["jointConstraints"][joint+"Extension"]
             else:
                 angle = abs(angle)
-                if angle > config["jointConstraints"]["kneeExtension"]:
-                    angle = config["jointConstraints"]["kneeExtension"]
+                if angle > config["jointConstraints"][joint+"Extension"]:
+                    angle = config["jointConstraints"][joint+"kneeExtension"]
         elif motionType == "flexion":
+            motorSpeed = self.joints[joint]["flexionDirection"]*motorSpeed
             if angle is None:
-                angle = config["jointConstraints"]["kneeFlexion"]
+                angle = config["jointConstraints"][joint+"Flexion"]
             else:
                 angle = abs(angle)
-                if angle < config["jointConstraints"]["kneeFlexion"]:
-                    angle = config["jointConstraints"]["kneeFlexion"]
+                if angle < config["jointConstraints"][joint+"Flexion"]:
+                    angle = config["jointConstraints"][joint+"Flexion"]
         else:
             print("motionType must be flexion or extension")
             return
         
         #Drive motor
-        self.kneeMotor.rate = motorSpeed
-        self.targetKneeAngle = angle
-        self.kneeMotion = motionType
+        self.joints[joint]["motor"].rate = motorSpeed
+        self.joints[joint]["targetAngle"] = angle
+        self.joints[joint]["motionType"] = motionType
         return
     
-    def extendKnee(self):
-        x0 = self.upperLeg.body.position[0]
-        x1 = self.torso.body.position[0]
-        if x1 > x0 and self.kneeAngle() > config["jointConstraints"]["kneeExtension"]: 
-             print("max extension reached")
-        else:
-            self.kneeMotor.rate = -config["jointConstraints"]["jointSpeed"]
-            self.kneeAngle()
 
-            
-    def flexKnee(self):
-        if self.kneeAngle() < config["jointConstraints"]["kneeFlexion"]:
-            self.kneeMotor.rate = config["jointConstraints"]["jointSpeed"]
-            self.kneeAngle()
-        else:
-            print("max flexion reached", config["jointConstraints"]["kneeFlexion"])
-    
     def flexPelvis(self):
         self.pelvisMotor.rate = -1
     
@@ -429,52 +418,92 @@ class Stickman:
         
         """
         kneeAngle = self.kneeAngle()
-        
+  
         if self.kneeMotor.rate != 0:
             if (
                     self.keys[pygame.K_DOWN]==0 
-                    and self.kneeMotion == "extension" 
+                    and self.joints["knee"]["motionType"] == "extension" 
                     and (
                             (kneeAngle > config["jointConstraints"]["kneeExtension"]) 
-                            or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle))
+                            or (self.joints["knee"]["targetAngle"] is not None and kneeAngle > self.joints["knee"]["targetAngle"] ))
                     ): 
                 self.stayStill()
                 print("Reached extension knee angle of", kneeAngle)
             elif (
                     self.keys[pygame.K_UP]==0 
-                    and self.kneeMotion == "flexion" 
+                    and self.joints["knee"]["motionType"] == "flexion" 
                     and self.torso.body.position[0] < self.upperLeg.body.position[0] 
                     and (
                             (kneeAngle < config["jointConstraints"]["kneeFlexion"]) 
-                            or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle))
+                            or (self.joints["knee"]["targetAngle"]  is not None and kneeAngle < self.joints["knee"]["targetAngle"]))
                     ):
                 self.stayStill()
                 print("Reached flexion knee angle of", kneeAngle)
                 
             
-            self.previousKneeAngle = kneeAngle
-        
+            self.joints["knee"]["previousAngle"]  = kneeAngle
+        elif self.joints["pelvis"]["motor"].rate != 0:
+            pelvisAngle = self.pelvisAngle()
+            
+            if (
+                    self.keys[pygame.K_RIGHT]==0
+                    and self.joints["pelvis"]["motionType"] == "extension"
+                    and self.upperArm.body.position[0] < self.torso.body.position[0]
+                    and (
+                            (pelvisAngle > config["jointConstraints"]["pelvisExtension"]) 
+                            or (self.joints["pelvis"]["targetAngle"] is not None and pelvisAngle > self.joints["pelvis"]["targetAngle"] ))
+                    ):
+                        self.stayStill()
+                        print("Reached extension pelvis angle of", pelvisAngle,config["jointConstraints"]["pelvisExtension"] )
+            elif (
+                    self.keys[pygame.K_LEFT]==0 
+                    and self.joints["pelvis"]["motionType"] == "flexion"
+                    and self.upperArm.body.position[0] > self.torso.body.position[0]
+                    and (
+                            (pelvisAngle > config["jointConstraints"]["pelvisFlexion"]) 
+                            or (self.joints["pelvis"]["targetAngle"]  is not None and pelvisAngle > self.joints["pelvis"]["targetAngle"]))
+                    ):
+                self.stayStill()
+                print("Reached flexion knee angle of", pelvisAngle, config["jointConstraints"]["pelvisFlexion"],  self.joints["pelvis"]["targetAngle"])
+    
+    
     def kneeAngle(self):
         
         #upperLegVector = self.torso.body.position - self.upperLeg.body.position
         upperLegVector = self.upperLeg.body.position - self.torso.body.position
         lowerLegVector = self.upperLeg.body.position - self.lowerLeg.body.position
         
+        
         v0  = upperLegVector / np.linalg.norm(upperLegVector)
         v1 = lowerLegVector / np.linalg.norm(lowerLegVector)
         dot_product = np.dot(v0, v1)
         angle = math.degrees(np.arccos(dot_product))
         
-        if self.previousKneeAngle is not None and self.keys[pygame.K_DOWN]==0 and self.kneeMotion == "extension" and (config["jointConstraints"]["kneeExtension"] > 180 or (self.targetKneeAngle is not None and self.targetKneeAngle > 180)) and angle < self.previousKneeAngle and  self.previousKneeAngle > 150:
+        if (
+                self.joints["knee"]["previousAngle"]  is not None 
+                and self.keys[pygame.K_DOWN]==0 
+                and self.joints["knee"]["motionType"] == "extension" 
+                and (
+                        config["jointConstraints"]["kneeExtension"] > 180 
+                        or (self.joints["knee"]["targetAngle"] is not None and self.joints["knee"]["targetAngle"] > 180)) 
+                and angle < self.joints["knee"]["previousAngle"] 
+                and  self.joints["knee"]["previousAngle"]  > 150):
             angle = 360-angle
         
         return angle
     
     def pelvisAngle(self):
        
-        torsoAngle = self.torso.body.angle
-        upperLegAngle = self.upperLeg.body.angle
-        pelvisAngle = torsoAngle - upperLegAngle
+        torsoVector = self.upperLeg.body.position - self.upperArm.body.position
+        upperLegVector = self.upperLeg.body.position - self.torso.body.position
+        
+        v0  = torsoVector / np.linalg.norm(torsoVector)
+        v1 = upperLegVector / np.linalg.norm(upperLegVector)
+        dot_product = np.dot(v0, v1)
+        angle = math.degrees(np.arccos(dot_product))
+        
+        
+        return angle
         
     # Methods to measure angles
     def jointAngle(self, joint):

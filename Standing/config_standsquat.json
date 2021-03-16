@@ -35,10 +35,10 @@
   },
   "jointConstraints": {
      "jointSpeed": 5,
-     "pelvisFlexion": 90,
-     "pelvisExtension": 0,
+     "pelvisFlexion": 75,
+     "pelvisExtension": 30,
      "pelvisHyperExtension": 15,
-     "kneeFlexion": 60,
+     "kneeFlexion": 120,
      "kneeExtension": 195,
      "shoulderFlexion": 90,
      "shoulderExtension": 90,
