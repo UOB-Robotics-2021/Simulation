@@ -111,9 +111,9 @@ class App:
             elif keys[pygame.K_RIGHT]:
                 self.stickFigure.moveLimb('pelvis', -1) # Flex
             elif keys[pygame.K_w]:
-                self.stickFigure.moveLimb('elbow', 1) # Extend
+                self.stickFigure.moveLimb('shoulder', 1) # Extend
             elif keys[pygame.K_s]:
-                self.stickFigure.moveLimb('elbow', -1) # Flex
+                self.stickFigure.moveLimb('shoulder', -1) # Flex
             elif keys[pygame.K_a]:
                 self.stickFigure.moveLimb('foot', 1) # Extend
             elif keys[pygame.K_d]:
@@ -288,13 +288,16 @@ class Stickman:
         self.upperArmVector = self.dirVec("upperArm")
         self.upperArm = Segment(self.shoulderPosition, self.upperArmVector, self.limbMass("upperArm"))
         self.shoulder = PivotJoint(self.torso.body, self.upperArm.body, self.torsoVector)
+        self.shoulderMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
+        self.shoulderMotor.collide_bodies = False
+        space.add(self.shoulderMotor)
         
         #Generate elbow and lower arm
         self.elbowPosition = self.vectorSum(self.shoulderPosition, self.upperArmVector)
         self.lowerArmVector = (self.swing['rod'][hand_index][0].position) - self.elbowPosition
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
-        self.elbowMotor = pymunk.SimpleMotor(b0, self.upperArm.body, 0)
+        self.elbowMotor = pymunk.SimpleMotor(b0, self.lowerArm.body, 0)
         self.elbowMotor.collide_bodies = False
         space.add(self.elbowMotor)
         
@@ -324,7 +327,7 @@ class Stickman:
 
         # Motors
         self.motors = {'footMotor': self.footMotor, 'kneeMotor': self.kneeMotor, 'pelvisMotor': self.pelvisMotor,
-                       'elbowMotor': self.elbowMotor}
+                       'shoulderMotor': self.shoulderMotor, 'elbowMotor': self.elbowMotor}
 
     # Methods used to create stickman
     def dirVec(self, limb):
