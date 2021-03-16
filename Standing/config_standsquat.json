@@ -10,7 +10,7 @@
   "swingConfig": {
     "topPosition": [ 300, 200 ],
     "swingLength": 200,
-    "jointDistances": [ 200, 278 ],
+    "jointDistances": [ 200, 80 ],
     "jointMasses": [ 10, 10 ]
   },
   "rodSwingConfig":{
