@@ -104,7 +104,7 @@ class App:
 
             for i in range(steps):
                 space.step(1/fps/steps)
-
+            
         pygame.quit()
         
     def do_event(self, event):
@@ -285,6 +285,22 @@ class Stickman:
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
         #print(self.elbowAngle())
+        x0 = self.upperLeg.body.position[0]
+        x1 = self.torso.body.position[0]
+        if x1 > x0:
+            print("Stop knee extension")
+        
+        if self.kneeAngle() > config["jointConstraints"]["kneeFlexion"]:
+            print("Stop knee flexion")
+        
+        if self.pelvisAngle() > config["jointConstraints"]["pelvisFlexion"]:
+            print("Stop pelvis flexion", self.pelvisAngle())
+        if self.pelvisAngle() < config["jointConstraints"]["pelvisExtension"]:
+            print("Stop pelvis extension")
+        if self.elbowAngle() < 10:
+            print("Stop elbow extension")
+        if self.elbowAngle() > config["jointConstraints"]["elbowFlexion"]:
+            print("stop elbow flexion")
         
        
         

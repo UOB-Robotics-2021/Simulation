@@ -1,6 +1,7 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 900 ]
+    "gravity": [ 0, 900 ],
+    "damping": 1
   },
   "LswingConfig":{
   "topPosition": [400,50],
@@ -14,12 +15,12 @@
   },
   "rodSwingConfig":{
     "topPosition": [ 300, 50 ],
-    "jointDistances": [[100,200]],
+    "jointDistances": [[100,100]],
     "jointMasses": [20]
   },
   "triangleSwingConfig": {
   "topPosition": [ 300, 50 ],
-  "jointDistances": [[-50,100], [-50,100]],
+  "jointDistances": [[-50,200], [-50,100]],
   "jointMasses": [ 20, 10, 10]
   },
   "squatStandConfig": {
@@ -44,6 +45,8 @@
      "elbowFlexion": 140,
      "elbowExtension": 15,
      "neckFlexion": 80,
-     "neckExtension": 55
+     "neckExtension": 55,
+     "ankleFlexion": 90,
+     "ankleExtension": 160
   }
 }
