@@ -102,70 +102,35 @@ class App:
         
     def run(self):
         while self.running:
+            #Handle user interaction
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
+                self.do_event(event)
             
-            keys = pygame.key.get_pressed()
-
-            if keys[pygame.K_DOWN]:
-                self.stickFigure.moveLimb('knee', 4) # Extend
-                #self.stickFigure.moveLimb('foot', -4) # Flex
-            elif keys[pygame.K_UP]:
-                self.stickFigure.moveLimb('knee', -4) # Flex
-                #self.stickFigure.moveLimb('foot', 4) # Extend
-            elif keys[pygame.K_LEFT]:
-                self.stickFigure.moveLimb('pelvis', 1) # Extend            
-            elif keys[pygame.K_RIGHT]:
-                self.stickFigure.moveLimb('pelvis', -1) # Flex
-            elif keys[pygame.K_w]:
-                self.stickFigure.moveLimb('shoulder', 1) # Extend
-            elif keys[pygame.K_s]:
-                self.stickFigure.moveLimb('shoulder', -1) # Flex
-            elif keys[pygame.K_a]:
-                self.stickFigure.moveLimb('foot', 1) # Extend
-            elif keys[pygame.K_d]:
-                self.stickFigure.moveLimb('foot', -1) # Flex
-            elif keys[pygame.K_SPACE]: # USING FOR DEBUGGING
-                print(self.stickFigure.jointAngle("knee"))
-            else:
-                self.stickFigure.stayStill() # Stop all motors if no keys are pressed
-
+            #Apply constraints every timestep
             self.stickFigure.applyConstraints()
             
+            #Update animation
             self.draw()
             self.clock.tick(fps)
 
             for i in range(steps):
                 space.step(1/fps/steps)
-            
+        
+        #Exit simulation
         pygame.quit()
         
     def do_event(self, event):
-        if event.type == QUIT:
-            self.running = False
         
         keys = pygame.key.get_pressed()
         self.stickFigure.keys = keys
         
         if keys[pygame.K_UP]:
-            print(self.stickFigure.kneeAngle())
-            self.stickFigure.upKey = 1
-            self.stickFigure.downKey = 0
-            #self.stickFigure.extendKnee()
             self.stickFigure.driveKnee("extension")
         elif keys[pygame.K_DOWN]:
-            #self.stickFigure.flexKnee()
             self.stickFigure.driveKnee("flexion", motorSpeed=100)
-            self.stickFigure.downKey = 1
-            self.stickFigure.upKey = 0
         elif keys[pygame.K_RIGHT]:
-            self.stickFigure.rightKey = 1
-            self.stickFigure.leftKey = 0
             self.stickFigure.flexPelvis()
         elif keys[pygame.K_LEFT]:
-            self.stickFigure.rightKey = 0
-            self.stickFigure.leftKey = 1
             self.stickFigure.extendPelvis()
         elif keys[pygame.K_w]:
             print("extend elbow")
@@ -173,8 +138,7 @@ class App:
         elif keys[pygame.K_s]:
             print("flex elbow")
             self.stickFigure.flexElbow()
-        else:
-            self.stickFigure.stayStill()
+
 
     def draw(self):
         self.screen.fill(GRAY)
@@ -323,18 +287,12 @@ class Stickman:
         self.headJoint = PivotJoint(self.torso.body, self.head.body, self.torsoVector + (headRadius * Vec2d(np.sin(self.stickFigureAngle * np.pi/180), -np.cos(self.stickFigureAngle * np.pi/180))))
 
         #Attack stick figure to swing
-        self.holdHand = PinJoint(self.lowerArm.body, self.getJointByNumber(hand_index), self.lowerArmVector)
+        self.holdHand = PinJoint(self.lowerArm.body, self.getJointByNumber(0), self.lowerArmVector)
         self.holdFoot = PinJoint(self.lowerLeg.body, self.getJointByNumber(foot_index), (0, 0))
-
+        print(hand_index, foot_index)
         self.previousKneeAngle = None
 
-        # Keys
-        self.upKey = 0
-        self.downKey = 0
-        self.rightKey = 0
-        self.leftKey = 0
-        self.keys = {'upKey': self.upKey, 'downKey': self.downKey, 'rightKey': self.rightKey, 'leftKey': self.leftKey}
-
+        
         # Limbs
         self.limbs = {'lowerLeg': self.lowerLeg, 'upperLeg': self.upperLeg, 'torso': self.torso, 'upperArm': self.upperArm,
                       'lowerArm': self.lowerArm}
@@ -442,15 +400,16 @@ class Stickman:
         self.elbowMotor.rate = 1
     
     def stayStill(self):
-        for key in self.keys.keys():
-            self.keys[key] = 0
-
         for motor in self.motors.keys():
             self.motors[motor].rate = 0
+            
+        self.kneeMotion = None
         
     def applyConstraints(self):
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
+        """
+        
         """
         if self.jointAngle('elbow') < config["jointConstraints"]["elbowExtension"]:
             self.moveLimb('elbow', 1) # Extend
@@ -468,16 +427,29 @@ class Stickman:
         if self.jointAngle('pelvis') > config["jointConstraints"]["pelvisFlexion"]:
             self.moveLimb('pelvis', 1) # Extend
         
-        
+        """
         kneeAngle = self.kneeAngle()
         
         if self.kneeMotor.rate != 0:
-            if self.keys[pygame.K_DOWN]==0 and self.kneeMotion == "extension" and ((kneeAngle > config["jointConstraints"]["kneeExtension"]) or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle)): 
-                self.stayStill()#
-                print("Reached knee angle of", kneeAngle)
-            elif self.keys[pygame.K_UP]==0 and self.kneeMotion == "flexion" and self.torso.body.position[0] < self.upperLeg.body.position[0] and self.downKey == 1 and ((kneeAngle < config["jointConstraints"]["kneeFlexion"]) or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle)):
+            if (
+                    self.keys[pygame.K_DOWN]==0 
+                    and self.kneeMotion == "extension" 
+                    and (
+                            (kneeAngle > config["jointConstraints"]["kneeExtension"]) 
+                            or (self.targetKneeAngle is not None and kneeAngle > self.targetKneeAngle))
+                    ): 
                 self.stayStill()
-                print("Reached knee angle of", kneeAngle)
+                print("Reached extension knee angle of", kneeAngle)
+            elif (
+                    self.keys[pygame.K_UP]==0 
+                    and self.kneeMotion == "flexion" 
+                    and self.torso.body.position[0] < self.upperLeg.body.position[0] 
+                    and (
+                            (kneeAngle < config["jointConstraints"]["kneeFlexion"]) 
+                            or (self.targetKneeAngle is not None and kneeAngle < self.targetKneeAngle))
+                    ):
+                self.stayStill()
+                print("Reached flexion knee angle of", kneeAngle)
                 
             
             self.previousKneeAngle = kneeAngle
