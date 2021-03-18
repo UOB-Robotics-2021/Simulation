@@ -99,6 +99,46 @@ class App:
         self.stickFigure = stickFigure
         self.swing = self.stickFigure.swing
         
+        #pivot angle
+        v_p = self.stickFigure.getJointByNumber(1).position - self.stickFigure.getJointByNumber(0).position
+        
+        print(0, self.stickFigure.getJointByNumber(0).position)
+        print(1, self.stickFigure.getJointByNumber(1).position)
+        
+        pivot_ang = math.degrees(np.arctan(v_p[0]/v_p[1]))
+        
+        #joint angle
+        v_j = self.stickFigure.lowerLeg.body.position - self.stickFigure.getJointByNumber(1).position        
+        
+        dot_product = np.dot(v_p, v_j)
+        joint_ang = round(dot_product/(np.linalg.norm(v_p)*np.linalg.norm(v_j)), 6)
+        ang_j = 180 - math.degrees(np.arccos(joint_ang)) # round to avoid arctan errors for small angles
+        
+        self.angles = {
+                "pivot": pivot_ang, 
+                "joint": ang_j,
+                "elbow": self.stickFigure.elbowAngle(),
+                "shoulder": self.stickFigure.shoulderAngle(),
+                "pelvis": self.stickFigure.pelvisAngle(),
+                "knee": self.stickFigure.kneeAngle(),
+        }
+        self.ang_vel = {
+                "pivot": 0, 
+                "joint": 0,
+                "elbow": 0,
+                "shoulder": 0,
+                "pelvis": 0,
+                "knee": 0,
+        }
+        self.ang_acc = {
+                "pivot": 0, #those initial values are incorrect
+                "joint": 0,
+                "elbow": 0,
+                "shoulder": 0,
+                "pelvis": 0,
+                "knee": 0,  
+        }
+        
         
     def run(self):
         while self.running:
@@ -115,6 +155,7 @@ class App:
 
             for i in range(steps):
                 space.step(1/fps/steps)
+            self.update_state()
         
         #Exit simulation
         pygame.quit()
@@ -138,7 +179,14 @@ class App:
         elif keys[pygame.K_s]:
             print("flex elbow")
             self.stickFigure.flexElbow()
-
+            
+        
+        elif keys[pygame.K_i]:
+            print(self.angles)
+        elif keys[pygame.K_v]:
+            print(self.ang_vel)
+        elif keys[pygame.K_y]:
+            print(self.ang_acc)
 
     def draw(self):
         self.screen.fill(GRAY)
@@ -162,6 +210,47 @@ class App:
                                     save_all=True, append_images=self.images[1:],
                                     optimize=True, duration=1000//fps, loop=0)
                 self.images = []
+                
+                
+                
+    def update_state(self):
+        # calculate changes in angles, ang_vel and ang_acc
+        dt = 1/fps
+        
+        
+        prev_angles = {key: self.angles[key] for key in self.angles}
+        prev_ang_vel = self.ang_vel
+        
+        
+        #pivot angle
+        v_p = self.stickFigure.getJointByNumber(1).position - self.stickFigure.getJointByNumber(0).position
+        
+        pivot_ang = math.degrees(np.arctan(v_p[0]/v_p[1]))
+        
+        #joint angle
+        v_j = self.stickFigure.lowerLeg.body.position - self.stickFigure.getJointByNumber(1).position        
+        
+        dot_product = np.dot(v_p, v_j)
+        joint_ang = round(dot_product/(np.linalg.norm(v_p)*np.linalg.norm(v_j)), 6)
+        ang_j = 180 - math.degrees(np.arccos(joint_ang)) # round to avoid arctan errors for small angles
+        
+        self.angles["pivot"] = pivot_ang
+        self.angles["joint"] = ang_j
+        self.angles["elbow"] = self.stickFigure.elbowAngle()
+        self.angles["shoulder"] = self.stickFigure.shoulderAngle()
+        self.angles["pelvis"] = self.stickFigure.pelvisAngle()
+        self.angles["knee"] = self.stickFigure.kneeAngle()
+                
+        
+        
+        dangles = {key: self.angles[key] - prev_angles[key] for key in self.angles} 
+        self.ang_vel = {key: dangles[key]/dt for key in dangles}
+        
+        dv = {key: self.ang_vel[key] - prev_ang_vel[key] for key in self.ang_vel}
+        self.ang_acc = {key: dv[key]/dt for key in dv}
+        
+        
+        
 
 # Code to generate figure and swing
 class Stickman:
@@ -489,7 +578,29 @@ class Stickman:
         
         
         return angle
+    
+    def elbowAngle(self):
+        upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
+        lowerArmVector = self.lowerArm.body.position - self.getJointByNumber(1).position
         
+        v0  = upperArmVector / np.linalg.norm(upperArmVector)
+        v1 = lowerArmVector / np.linalg.norm(lowerArmVector)
+        dot_product = np.dot(v0, v1)
+        angle = math.degrees(np.arccos(dot_product))
+        
+        return angle
+    
+    def shoulderAngle(self):
+        upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
+        torsoVector = self.upperArm.body.position - self.torso.body.position
+        
+        v0  = upperArmVector / np.linalg.norm(upperArmVector)
+        v1 = torsoVector / np.linalg.norm(torsoVector)
+        dot_product = np.dot(v0, v1)
+        angle = math.degrees(np.arccos(dot_product))
+        
+        return angle
+    
     # Methods to measure angles
     def jointAngle(self, joint):
         limb = self.joints[joint]
@@ -500,7 +611,7 @@ class Stickman:
         temp = list(self.limbs)
         
         if limb == "lowerArm":
-            firstVector = self.limbs[limb].body.position - self.getJointByNumber(self.hand_index).position
+            firstVector = self.limbs[limb].body.position - self.getJointByNumber(1).position
         else:
             nextKey = temp[temp.index(limb) + 1]
             firstVector = self.limbs[nextKey].body.position - self.limbs[limb].body.position
