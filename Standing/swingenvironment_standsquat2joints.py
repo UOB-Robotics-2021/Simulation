@@ -33,7 +33,7 @@ space.gravity = config['environmentConfig']["gravity"]
 b0 = space.static_body
 
 size = w, h = 600, 500
-fps = 30
+fps = 1
 steps = 10
 
 BLACK = (0, 0, 0)
@@ -286,7 +286,7 @@ class Stickman:
 
         return -legAngle
 
-angle = 45
+angle = 0
 swingPosition = (300, 50)
 swingLength = 200
 
