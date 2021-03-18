@@ -12,7 +12,7 @@ import pygame
 from neuralnetwork import NeuralNetwork
 
 '''
-Skeleton Model 
+Skeleton Model
 if followed, genetic_environment should, in theory, be able to run a machine learning simulation
 on the model provided you define a learning environment and feed an appropriate config file
 
@@ -21,31 +21,32 @@ e.g. learningenvironment = LearningEnvironment(space, Model, loadConfig('config.
 class Model():
     def __init__(self, space, configFile, numActions):
         initialise stuff here
-    
+
     def generateModel(self):
         build the model
-    
+
     def destroyModel(self):
         clear the model to allow for reset
-    
+
     def update(self):
         set up the inputs for the step function; determine an action via the neural network
-    
+
     def step(self, action):
         change the system in some way in response to the action determined by the neural network
-    
+
     def calculateFitness(self):
         determine the fitness of the model at the end of the simulation (could be changed?)
 
 '''
 
+
 class VariablePendulum():
-    
+
     def __init__(self, space, configFile, numActions=500):
         self.num_actions = numActions
         self.config = configFile
         self.space = space
-        self.colour = (np.random.uniform(0,255),np.random.uniform(0,255),np.random.uniform(0,255),255)
+        self.colour = (np.random.uniform(0, 255),np.random.uniform(0, 255),np.random.uniform(0, 255),255)
         self.objects = self.generateModel()
 
         self.initial_amplitude = abs(self.angle())
@@ -54,36 +55,41 @@ class VariablePendulum():
         self.action_step = 0
         self.num_reversals = 0
         self.last_action = 0
-        self.prev_angle = 0
+        self.prev_angle = self.angle()
         self.prev_dir = 2
         self.steps_to_done = 0
         self.done = False
-        self.complete = False
+        self.reached_max = False
+        self.reached_max_step = 0
         self.movable = True
-        
-        self.neuralnetwork = NeuralNetwork(4, 3, *self.config['hiddenLayers'])
+
+        self.neuralnetwork = NeuralNetwork(4, 2, *self.config['hiddenLayers'])
 
     def update(self):
         if not self.done:
-            dtheta = self.angle()-self.prev_angle
-            ddtheta = self.angle()-dtheta
-            action = self.neuralnetwork.forward([abs(self.angle()), abs(dtheta), abs(ddtheta), self.maximum_amplitude])
+            self.dtheta = self.angle()-self.prev_angle
+            self.ddtheta = self.angle()-self.dtheta
+            action = self.neuralnetwork.forward([abs(self.angle()), abs(self.dtheta), abs(self.ddtheta), self.maximum_amplitude])
             self.step(action)
             self.checkMovable()
 
+    def resist(self):
+        fx = self.dtheta*self.config['dampingCoefficient']
+        fy = self.dtheta*self.config['dampingCoefficient']
+        self.body.apply_impulse_at_local_point((fx, fy))
+
     def generateModel(self):
-        #Create objects
+        # Create objects
         moment_of_inertia = 0.25*self.config["flywheelMass"]*self.config["flywheelRadius"]**2
-        
+
         self.body = pymunk.Body(mass=self.config["flywheelMass"], moment=moment_of_inertia)
         self.body.position = self.config["flywheelInitialPosition"]
         self.circle = pymunk.Circle(self.body, radius=self.config["flywheelRadius"])
-        self.circle.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
+        self.circle.filter = pymunk.ShapeFilter(categories=0b1, mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         self.circle.friction = 90000
-        self.circle.color = self.colour
-        #Create joints
+        # Create joints
         self.joint = pymunk.PinJoint(self.space.static_body, self.body, self.config["pivotPosition"])
-        
+
         self.top = self.body.position[1] + self.config["flywheelRadius"]
 
         self.space.add(self.body, self.circle, self.joint)
@@ -91,19 +97,12 @@ class VariablePendulum():
     def angle(self):
         y = self.config['pivotPosition'][1] - self.body.position.y
         x = self.body.position.x - self.config['pivotPosition'][0]
-        angle = np.arctan(x/y)
+        angle = np.arctan(2*x/y)
         return angle
 
-    def angVel(self):  # return angular velocity
-        v = [self.body.velocity.x, self.body.velocity.y]
-        y = self.config['pivotPosition'][1] - self.body.position.y
-        x = self.body.position.x - self.config['pivotPosition'][0]
-        r = [x, y]# vector for position of pendulum
-        L = np.cross(r, v) 
-        return L
-    
     def extendRope(self, direction):
-        if direction != self.prev_dir and direction != 2: self.num_reversals += 1
+        if direction != self.prev_dir:
+            self.num_reversals += 1
         self.prev_dir = direction
         if direction == 0:
             if self.movable:
@@ -115,9 +114,7 @@ class VariablePendulum():
                 self.joint.distance = self.config["maxPendulumLength"]
                 self.last_action = self.action_step
                 self.movable = False
-        else:
-            pass
-    
+
     def checkMovable(self):
         if self.action_step - self.last_action > self.config['actionDelay']:
             self.movable = True
@@ -125,29 +122,28 @@ class VariablePendulum():
     def step(self, action):
         self.action_step += 1
         self.prev_angle = self.angle()
-        
+
         amplitude = abs(self.angle())
         if amplitude > self.maximum_amplitude:
             self.maximum_amplitude = amplitude
+        if self.body.position.y < self.config['pivotPosition'][1]:
+            self.reached_max = True
+            self.reached_max_step = self.action_step
+            self.done = True
         self.extendRope(np.argmax(action))
-        
+
         if self.action_step >= self.num_actions:
             self.done = True
-        if self.body.position.y < self.config['pivotPosition'][1]:
-            self.done = True
-            self.complete = True
 
     def calculateFitness(self):
-        if self.complete:
-            return (self.maximum_amplitude-self.initial_amplitude)+200/self.num_reversals
-        else:
-            return (self.maximum_amplitude-self.initial_amplitude)
-    
+        return ((self.maximum_amplitude-self.initial_amplitude)*180/np.pi)**2/(self.num_reversals)**0.5
+
     def destroyModel(self):
         self.space.remove(self.body, self.circle, self.joint)
 
+
 class SmoothVariablePendulum():
-    
+
     def __init__(self, space, configFile, numActions=500):
         self.num_actions = numActions
         self.config = configFile
@@ -167,7 +163,7 @@ class SmoothVariablePendulum():
         self.done = False
         self.complete = False
         self.movable = True
-        
+
         self.neuralnetwork = NeuralNetwork(6, 5, *self.config['hiddenLayers'])
 
     def update(self):
@@ -181,7 +177,7 @@ class SmoothVariablePendulum():
     def generateModel(self):
         #Create objects
         moment_of_inertia = 0.25*self.config["flywheelMass"]*self.config["flywheelRadius"]**2
-        
+
         self.body = pymunk.Body(mass=self.config["flywheelMass"], moment=moment_of_inertia)
         self.body.position = self.config["flywheelInitialPosition"]
         self.circle = pymunk.Circle(self.body, radius=self.config["flywheelRadius"])
@@ -190,7 +186,7 @@ class SmoothVariablePendulum():
         self.circle.color = self.colour
         #Create joints
         self.joint = pymunk.PinJoint(self.space.static_body, self.body, self.config["pivotPosition"])
-        
+
         self.top = self.body.position[1] + self.config["flywheelRadius"]
 
         self.space.add(self.body, self.circle, self.joint)
@@ -224,7 +220,7 @@ class SmoothVariablePendulum():
                 self.body.angular_velocity = -5
         else:
             pass
-    
+
     def checkMovable(self):
         if self.action_step - self.last_action > self.config['actionDelay']:
             self.movable = True
@@ -232,12 +228,12 @@ class SmoothVariablePendulum():
     def step(self, action):
         self.action_step += 1
         self.prev_angle = self.angle()
-        
+
         amplitude = abs(self.angle())
         if amplitude > self.maximum_amplitude:
             self.maximum_amplitude = amplitude
         self.extendRope(np.argmax(action))
-        
+
         if self.action_step >= self.num_actions:
             self.done = True
         if self.body.position.y < self.config['pivotPosition'][1]:
@@ -249,7 +245,7 @@ class SmoothVariablePendulum():
             return (self.maximum_amplitude-self.initial_amplitude)+200/self.num_reversals
         else:
             return (self.maximum_amplitude-self.initial_amplitude)
-    
+
     def destroyModel(self):
         self.space.remove(self.body, self.circle, self.joint)
 
@@ -328,26 +324,26 @@ class Person():
     def generatePerson(self):
         body = pymunk.Body(0.75*self.mass, 100000000000000) # assumes the body from the quads up make up 75% of mass
         body.position = self.pos
-        
+
         legs = pymunk.Body(0.25*self.mass, 100)
         legs.position = self.pos
 
         torso_shape = pymunk.Segment(body, (0,0), (0, -30), 3)
         bottom_shape = pymunk.Segment(body, (0,0), (20, 0), 3)
-        
+
         legs_shape = pymunk.Segment(legs, (20, 0), (20, 20), 3)
-        
+
         knee_joint = pymunk.PinJoint(legs, body, (20, 0), (20,0))
         knee_motor = pymunk.SimpleMotor(legs, body, 0)
         knee_joint.collide_bodies = False
-        
+
         self.space.add(body, torso_shape, bottom_shape, legs, legs_shape, knee_joint, knee_motor)
-        
+
         return {'body' : [(body, torso_shape, legs_shape), (legs, legs_shape)], 'pivots' : [knee_joint, knee_motor]}
 
     def update(self):
         self.limitRotation()
-    
+
     def limitRotation(self, limits=(np.pi/4, -np.pi/2)):
         # prevents legs from rotating too far, +pi/4 is 45deg clockwise, -pi/2 is 90 deg anticlockwise
         if self.legs[0].angle > limits[0]:
@@ -356,13 +352,13 @@ class Person():
             self.legs[0].angle = limits[1]
 
 class SittingSwinger(Swing):
-    
+
     def __init__(self, space, configFile):
         self.person = Person(space, self.swing.pos, mass=configFile['person'])
         self.seat = pymunk.PinJoint(self.swing.seat, self.person.objects['body'][0][0])
         self.seat.collide_bodies = False
         self.space.add(self.seat)
-    
+
     def eventHandler(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:

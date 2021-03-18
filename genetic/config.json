@@ -1,4 +1,15 @@
 {
+  "skeletonConfig" : {
+    "populationSize": 200,
+	"hiddenLayers": [2, 25],
+	"initialNumSteps": 100,
+	"gensBeforeIncrement": 5,
+	"numStepIncrement": 50,
+	"maxSteps": 500,
+	"gensBeforeNatural": 10,
+	"mutationRate": 0.3,
+	"selectionPercentile": 0.025
+  },
   "swingConfig" : {
     "topPosition" : [300, 150],
     "jointLocations" : [[0, 50], [0, 100], [0, 150], [0, 200]],
@@ -26,15 +37,15 @@
       "flywheelInitialPosition": [350, 350],
       "maxPendulumLength": 350,
       "minPendulumLength": 250,
+	  "dampingCoefficient": 100,
 	  "populationSize": 200,
 	  "hiddenLayers": [2, 25],
-	  "initialNumSteps": 50,
-	  "gensBeforeIncrement": 5,
-	  "numStepIncrement": 50,
+	  "numSteps": 600,
 	  "gensBeforeNatural": 10,
-	  "mutationRate": 0.3,
+	  "mutationRate": 0.005,
+	  "inheritanceMethod": "chance",
 	  "actionDelay": 10,
-	  "selectionPercentile": 0.025
+	  "selectionPercentile": 0.05
   },
    "smoothVariablePendulumMLConfig" : {
       "flywheelRadius": 20,
@@ -45,7 +56,7 @@
       "minPendulumLength": 250,
 	  "squattingSpeed": 10,
 	  "populationSize": 200,
-	  "hiddenLayers": [2, 128],
+	  "hiddenLayers": [2, 25],
 	  "initialNumSteps": 100,
 	  "gensBeforeIncrement": 5,
 	  "numStepIncrement": 50,
