@@ -94,6 +94,14 @@ class VariablePendulum():
         angle = np.arctan(x/y)
         return angle
 
+    def angVel(self):  # return angular velocity
+        v = [self.body.velocity.x, self.body.velocity.y]
+        y = self.config['pivotPosition'][1] - self.body.position.y
+        x = self.body.position.x - self.config['pivotPosition'][0]
+        r = [x, y]# vector for position of pendulum
+        L = np.cross(r, v) 
+        return L
+    
     def extendRope(self, direction):
         if direction != self.prev_dir and direction != 2: self.num_reversals += 1
         self.prev_dir = direction

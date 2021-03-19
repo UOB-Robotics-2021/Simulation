@@ -80,6 +80,14 @@ class VariablePendulum():
             self.joint.distance = self.config["maxPendulumLength"]
         else:
             pass
+        
+    def angVel(self):  # return angular velocity
+        v = [self.body.velocity.x, self.body.velocity.y]
+        y = self.config['pivotPosition'][1] - self.body.position.y
+        x = self.body.position.x - self.config['pivotPosition'][0]
+        r = [x, y]# vector for position of pendulum
+        L = np.cross(r, v) 
+        return L
 
 #Initialize Simulation
 pygame.init()
