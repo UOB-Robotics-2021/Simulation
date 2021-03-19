@@ -121,6 +121,9 @@ class App:
         
     def do_event(self, event):
         
+        if event.type == pygame.QUIT:
+            self.running = False
+        
         keys = pygame.key.get_pressed()
         self.stickFigure.keys = keys
         
@@ -129,9 +132,9 @@ class App:
         elif keys[pygame.K_DOWN] and keys[pygame.K_UP] == 0:
             self.stickFigure.moveLimb("knee", "flexion", motorSpeed=100)
         elif keys[pygame.K_RIGHT] and keys[pygame.K_LEFT] == 0:
-            self.stickFigure.moveLimb("pelvis", "flexion", angle=20)
+            self.stickFigure.moveLimb("pelvis", "flexion")
         elif keys[pygame.K_LEFT] and keys[pygame.K_RIGHT] == 0:
-            self.stickFigure.moveLimb("pelvis", "extension", angle=350)
+            self.stickFigure.moveLimb("pelvis", "extension")
         elif keys[pygame.K_w]:
             print("extend elbow")
             self.stickFigure.extendElbow()
@@ -168,7 +171,6 @@ class Stickman:
     def __init__(self, space, config, scale=1, lean=0, theta=0):
         """
         Generate the stickman and the swing.
-
         space: The Pymunk space to add the objects in
         config: The config file containing the stickman and swing info
         scale: Scale of the generated stickman
@@ -478,6 +480,8 @@ class Stickman:
         torsoVector = self.upperLeg.body.position - self.upperArm.body.position
         upperLegVector = self.upperLeg.body.position - self.torso.body.position
         
+        print(torsoVector, upperLegVector)
+        
         v0  = torsoVector / np.linalg.norm(torsoVector)
         v1 = upperLegVector / np.linalg.norm(upperLegVector)
         dot_product = np.dot(v0, v1)
@@ -485,7 +489,8 @@ class Stickman:
         
         #Angles defined so 0 is at 12 and 180 is at 6
         if self.upperArm.body.position[0] < self.torso.body.position[0]:
-            angle = 360-angle
+            angle = -angle
+        
         
         
         return angle
