@@ -1,7 +1,12 @@
 {
   "environmentConfig": {
-    "gravity": [ 0, 900 ],
-    "damping": 1
+    "gravity": [ 0, 90 ],
+    "damping": 1, 
+    "ragdollEnabled": 0,
+    "motorUsingTargetAngle": 1,
+    "constrainJointAngles": 1,
+    "motorMaxForce": 10000000000
+    
   },
   "LswingConfig":{
   "topPosition": [400,50],
@@ -36,7 +41,7 @@
   "jointConstraints": {
      "jointSpeed": 5,
      "pelvisFlexion": 75,
-     "pelvisExtension": 330,
+     "pelvisExtension": -30,
      "pelvisHyperExtension": 15,
      "kneeFlexion": 240,
      "kneeExtension": 15,

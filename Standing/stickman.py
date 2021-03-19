@@ -106,8 +106,9 @@ class App:
             for event in pygame.event.get():
                 self.do_event(event)
             
-            #Apply constraints every timestep
-            self.stickFigure.applyConstraints()
+            if self.stickFigure.config["environmentConfig"]["constrainJointAngles"] == 1:
+                #Apply constraints every timestep
+                self.stickFigure.applyConstraints()
             
             #Update animation
             self.draw()
@@ -319,8 +320,15 @@ class Stickman:
                 "elbow": {"motor": self.elbowMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1}
                 }
 
-        
-        
+        #If stickman is a ragdoll let stickman fall
+        if self.config["environmentConfig"]["ragdollEnabled"] == 1:
+            for joint in self.joints.keys():
+                self.joints[joint]["motor"].max_force = 0
+        #Otherwise set max force of motors to high limit
+        else:
+            for joint in self.joints.keys():
+                self.joints[joint]["motor"].max_force = self.config["environmentConfig"]["motorMaxForce"]
+            
     # Methods used to create stickman
     def dirVec(self, limb):
         """
@@ -340,7 +348,8 @@ class Stickman:
 
     # Methods to move the stickman
     def moveLimb(self, joint, motionType, angle=None, motorSpeed=None):
-        print(len(self.space.bodies))
+       
+        
         #If user not set motorSpeed or is set higher than max value in config file
         if motorSpeed is None or motorSpeed > config["jointConstraints"]["jointSpeed"]:
             motorSpeed = config["jointConstraints"]["jointSpeed"]
@@ -374,11 +383,17 @@ class Stickman:
             return
         
         #Drive motor
+        self.joints[joint]["motor"].max_force = self.config["environmentConfig"]["motorMaxForce"]
         self.joints[joint]["motor"].rate = motorSpeed
         
         self.joints[joint]["targetAngle"] = angle
         self.joints[joint]["motionType"] = motionType
-        print(joint + " " + motionType +  " " + "to" + " " + str(angle))
+        
+        if self.config["environmentConfig"]["motorUsingTargetAngle"] == 1:
+            print(joint + " " + motionType + " to" + " " + str(angle) + " at a rate of " + str(motorSpeed))
+        else:
+            print(joint + " " + motionType +  " at a rate of " + str(motorSpeed))
+            
         return
     
 
@@ -394,8 +409,15 @@ class Stickman:
     def extendElbow(self):
         self.elbowMotor.rate = 1
     
-    def stayStill(self):
-        for joint in self.joints.keys():
+    def stayStill(self, joint=None):
+        #Stop all motors
+        if joint == None:
+            for joint in self.joints.keys():
+                self.joints[joint]["motor"].max_force = self.config["environmentConfig"]["motorMaxForce"]
+                self.joints[joint]["motor"].rate = 0
+        #Stop specific motor
+        else:
+            self.joints[joint]["motor"].max_force = self.config["environmentConfig"]["motorMaxForce"]
             self.joints[joint]["motor"].rate = 0
             
         self.kneeMotion = None
@@ -404,40 +426,39 @@ class Stickman:
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
-        
-        kneeAngle = self.kneeAngle()
 
-        if self.kneeMotor.rate != 0:
+        kneeAngle = self.kneeAngle()
+        print("kneeAngle: ", kneeAngle, "pelvisAngle: ", self.pelvisAngle())
+
+        if self.kneeMotor.rate != 0 or self.kneeMotor.max_force < 100: #If motor engaged or limited by stickman being a ragdoll
             if (
                     self.keys[pygame.K_DOWN]==0
                     and self.torso.body.position[0] > self.upperLeg.body.position[0]
-                    and self.joints["knee"]["motionType"] == "extension" 
+                    #and self.joints["knee"]["motionType"] == "extension" 
                     and (
                             (kneeAngle > config["jointConstraints"]["kneeExtension"]) 
                             or (self.joints["knee"]["targetAngle"] is not None and kneeAngle > self.joints["knee"]["targetAngle"] ))
                     ): 
-                self.stayStill()
+                self.stayStill("knee")
                 print("Reached extension knee angle of", kneeAngle)
             elif (
                     self.keys[pygame.K_UP]==0 
-                    and self.joints["knee"]["motionType"] == "flexion" 
+                    #and self.joints["knee"]["motionType"] == "flexion" 
                     and self.torso.body.position[0] < self.upperLeg.body.position[0] 
                     and (
                             (kneeAngle < config["jointConstraints"]["kneeFlexion"]) 
                             or (self.joints["knee"]["targetAngle"]  is not None and kneeAngle < self.joints["knee"]["targetAngle"]))
                     ):
-                self.stayStill()
+                self.stayStill("knee")
                 print("Reached flexion knee angle of", kneeAngle)
                 
             
             self.joints["knee"]["previousAngle"]  = kneeAngle
-        elif self.joints["pelvis"]["motor"].rate != 0:
+        elif self.joints["pelvis"]["motor"].rate != 0 or self.joints["pelvis"]["motor"].max_force < 100:
             pelvisAngle = self.pelvisAngle()
             
             if (
-                    self.keys[pygame.K_RIGHT]==0
-                    and self.joints["pelvis"]["motionType"] == "extension"
-                    and self.upperArm.body.position[0] < self.torso.body.position[0]
+                    self.joints["pelvis"]["motionType"] != "flexion" #limb not undergoing flexion
                     and (
                             (pelvisAngle < config["jointConstraints"]["pelvisExtension"]) 
                             or (self.joints["pelvis"]["targetAngle"] is not None and pelvisAngle < self.joints["pelvis"]["targetAngle"] ))
@@ -445,14 +466,13 @@ class Stickman:
                         self.stayStill()
                         print("Reached extension pelvis angle of", pelvisAngle,config["jointConstraints"]["pelvisExtension"] )
             elif (
-                    self.keys[pygame.K_LEFT]==0 
-                    and self.joints["pelvis"]["motionType"] == "flexion"
-                    and self.upperArm.body.position[0] > self.torso.body.position[0]
+                    self.joints["pelvis"]["motionType"] != "extension" #limb not undergoing flexion
                     and (
                             (pelvisAngle > config["jointConstraints"]["pelvisFlexion"]) 
                             or (self.joints["pelvis"]["targetAngle"]  is not None and pelvisAngle > self.joints["pelvis"]["targetAngle"]))
                     ):
                 self.stayStill()
+                print(self.joints["pelvis"]["motionType"])
                 print("Reached flexion pelvis angle of", pelvisAngle, config["jointConstraints"]["pelvisFlexion"],  self.joints["pelvis"]["targetAngle"])
     
     
@@ -479,9 +499,7 @@ class Stickman:
         
         torsoVector = self.upperLeg.body.position - self.upperArm.body.position
         upperLegVector = self.upperLeg.body.position - self.torso.body.position
-        
-        print(torsoVector, upperLegVector)
-        
+
         v0  = torsoVector / np.linalg.norm(torsoVector)
         v1 = upperLegVector / np.linalg.norm(upperLegVector)
         dot_product = np.dot(v0, v1)
