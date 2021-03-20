@@ -33,7 +33,7 @@
     "foot": [ -90, 22, 2 ],
     "lowerLeg": [ -90, 44, 10 ],
     "upperLeg": [ -90, 48, 20 ],
-    "torso": [ -95, 65, 20 ],
+    "torso": [ -90, 65, 20 ],
     "upperArm": [ 160, 35, 6 ],
     "lowerArm": [ 0, 0, 6 ],
     "head": [ 15, 5 ]
@@ -44,7 +44,7 @@
      "pelvisExtension": -30,
      "pelvisHyperExtension": 15,
      "kneeFlexion": -120,
-     "kneeExtension": 15,
+     "kneeExtension": 5,
      "shoulderFlexion": 90,
      "shoulderExtension": 90,
      "elbowFlexion": 140,
