@@ -33,7 +33,6 @@ else:
 # Set-up environment
 space = pymunk.Space()
 space.gravity = config['environmentConfig']["gravity"]
-space.damping = 0.9
 b0 = space.static_body
 
 
@@ -109,7 +108,7 @@ class App:
             if self.stickFigure.config["environmentConfig"]["constrainJointAngles"]:
                 #Apply constraints every timestep
                 self.stickFigure.applyConstraints()
-                pass
+                self.stickFigure.swingResistance()
             
             #Update animation
             self.draw()
@@ -229,10 +228,16 @@ class Stickman:
         return self.swing['rod'][num]
         
     def swingResistance(self):
-        # TODO: Fetch speed of top segment
-        # TODO: Apply force in opposite direction of velocity, proportional to the magnitude of the velocity
+        # Fetch speed of top segment
+        v = self.getJointByNumber(0).velocity
+        r = (self.config["swingConfig"]["jointDistances"][0]/2)
+        w = v / r
+        # Apply force in opposite direction of velocity, proportional to the magnitude of the velocity
+        f_coeff = 200000
+        f = -w * f_coeff
+        pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2
+        self.getJointByNumber(0).apply_force_at_local_point(f, pos)
         # TODO: Perhaps force is proportional to distance from equilibrium point too? Idk
-        pass
 
     def generateStickman(self):
         """
