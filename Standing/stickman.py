@@ -61,6 +61,11 @@ class PivotJoint:
         joint = pymunk.PinJoint(b, b2, a, a2)
         joint.collide_bodies = False
         space.add(joint)
+        
+class GearJoint:
+    def __init__(self, b, b2, phase, ratio):
+        joint = pymunk.GearJoint(b, b2, phase, ratio)
+        space.add(joint)
 
 class Segment:
     def __init__(self, p0, v, m=10, radius=3, color=(0, 255, 0, 0)):
@@ -156,7 +161,8 @@ class App:
                 self.stickFigure.applyConstraints()
                 self.stickFigure.swingResistance()
             
-            self.stickFigure.makeDecision(self.angles["pivot"], self.ang_vel["pivot"])
+            if config["environmentConfig"]["automatedPumping"]:
+                self.stickFigure.makeDecision(self.angles["pivot"], self.ang_vel["pivot"])
 
             #Update animation
             self.draw()
@@ -189,16 +195,10 @@ class App:
             #self.stickFigure.moveLimb("knee", "flexion")
             #self.stickFigure.moveLimb("pelvis", "flexion", angle=10)
         elif keys[pygame.K_RIGHT] and keys[pygame.K_LEFT] == 0:
-            standUpDict = {
-                "pelvis": {"motorSpeed": 5, "targetAngle": 10}
-                }
-            self.stickFigure.moveStickman(standUpDict)
+            self.stickFigure.leanForward()
             #self.stickFigure.moveLimb("pelvis", "flexion")
         elif keys[pygame.K_LEFT] and keys[pygame.K_RIGHT] == 0:
-            standUpDict = {
-                "pelvis": {"motorSpeed": -5, "targetAngle": -10}
-                }
-            self.stickFigure.moveStickman(standUpDict)
+            self.stickFigure.leanBack()
             #self.stickFigure.moveLimb("pelvis", "extension")
         elif keys[pygame.K_w]:
             self.stickFigure.moveLimb("shoulder", "extension", motorSpeed=1)
@@ -277,6 +277,7 @@ class App:
         self.angles["shoulder"] = self.stickFigure.shoulderAngle()
         self.angles["pelvis"] = self.stickFigure.pelvisAngle()
         self.angles["knee"] = self.stickFigure.kneeAngle()
+        
                 
         
         
@@ -347,9 +348,13 @@ class Stickman:
         joints.append(botSegment.body)
 
         self.swingVector = config['swingLength'] * Vec2d(np.cos(self.swingAngle * np.pi/180), np.sin(self.swingAngle * np.pi/180))
-
+        """
         self.rodSwingMotor = pymunk.SimpleMotor(joints[0], joints[1], 0)
         space.add(self.rodSwingMotor)
+        """
+        self.gear = pymunk.GearJoint(joints[0], joints[1], 0, 1)
+    
+        self.space.add(self.gear)
 
         return {'rod' : joints, 'top' : [top, top_shape]}
         
@@ -445,7 +450,7 @@ class Stickman:
 
         self.previousKneeAngle = None
         
-        print(dir(self.kneeMotor))
+        print(dir(self.upperLeg.body))
         
         # Limbs
         self.limbs = {'lowerLeg': self.lowerLeg, 'upperLeg': self.upperLeg, 'torso': self.torso, 'upperArm': self.upperArm,
@@ -577,6 +582,24 @@ class Stickman:
             }
             
         self.moveStickman(standUpDict)
+        
+        
+    def leanBack(self):
+        standUpDict = {
+            "knee": {"motorSpeed": -6, "targetAngle": None},
+            "pelvis": {"motorSpeed": 6, "targetAngle": None}
+            }
+            
+        self.moveStickman(standUpDict)
+        
+    def leanForward(self):
+         standUpDict = {
+            "knee": {"motorSpeed": 6, "targetAngle": None},
+            "pelvis": {"motorSpeed": -6, "targetAngle": None}
+            }
+            
+            
+         self.moveStickman(standUpDict)
 
 
     def moveLimb(self, joint, motionType, angle=None, motorSpeed=None):
@@ -629,22 +652,6 @@ class Stickman:
         return
     
     
-    def flexPelvis(self):
-        self.pelvisMotor.rate = -1
-    
-    def extendPelvis(self):
-        self.pelvisMotor.rate = 1
-    
-    def flexElbow(self):
-        print("flex elbow")
-        self.shoulderMotor.max_force = 100*self.config["environmentConfig"]["motorMaxForce"]
-        self.shoulderMotor.rate = -1
-        
-    def extendElbow(self):
-        print("extend elbow")
-        self.shoulderMotor.max_force = 100*self.config["environmentConfig"]["motorMaxForce"]
-        self.shoulderMotor.rate = 1
-    
     def stayStill(self, joint=None):
 
         #Stop all motors
@@ -661,13 +668,48 @@ class Stickman:
         
         print("pelvisAngle: ", self.pelvisAngle(), "kneeAngle: ", self.kneeAngle())
         
+    
+    def calculateTotalEnergy(self):
+        totalEnergy = 0
+        for limb in self.limbs.keys():
+            #Calculate gravitational potential energy
+            h=self.config["environmentConfig"]["screenSize"][1] - (self.upperLeg.body.position[1] + self.upperLeg.body.center_of_gravity[1])
+            gpe = self.limbs[limb].body.mass*h*self.config["environmentConfig"]["gravity"][1]
+            totalEnergy += gpe
+            
+            #Calculate kinetic energy
+            totalEnergy += self.limbs[limb].body.kinetic_energy
+            
+        for joint in self.swing.keys():
+            h= self.config["environmentConfig"]["screenSize"][1] - (self.swing[joint].position[1] + self.swing[joint].center_of_gravity[1])
+            gpe = self.swing[joint].mass*h*self.config["environmentConfig"]["gravity"][1]
+            totalEnergy += gpe
+            
+            #Calculate kinetic energy
+            totalEnergy += self.swing[joint].kinetic_energy
+            
+        return totalEnergy
+
     def applyConstraints(self):
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
         #print(self.kneeMotor.impulse)
         
+        #print("kinetic Energy", self.upperLeg.body.kinetic_energy)
+        
+        
+        h = 500 - (self.upperLeg.body.position[1] + self.upperLeg.body.center_of_gravity[1])
+        
+        
+        #print("gravitational energy", self.upperLeg.body.mass*h*900)
+        
+        gpe = self.upperLeg.body.mass*h*900
+        
+        print("total: ", gpe)
+        
         constrainJoints = ["knee"]
+                           
        
         for joint in constrainJoints:
             
@@ -724,65 +766,6 @@ class Stickman:
                             print("Reached anticlockwise extension " + joint + " target angle of", jointAngle, self.joints[joint]["targetAngle"])
                 
                         
-               
-               
-                
-        """
-        if self.kneeMotor.rate != 0 or self.kneeMotor.max_force < 100: #If motor engaged or limited by stickman being a ragdoll
-            if (
-                    self.joints["knee"]["motionType"] != "flexion"
-                    and (
-                            (kneeAngle > config["jointConstraints"]["kneeExtension"]) 
-                            or (self.joints["knee"]["targetAngle"] is not None and kneeAngle > self.joints["knee"]["targetAngle"] ))
-                    ): 
-                self.stayStill("knee")
-                rotationAngle = self.upperLeg.body.rotation_vector.angle_degrees
-                print("test", rotationAngle)
-                print("Reached extension knee angle of", kneeAngle)
-            elif (
-                    self.joints["knee"]["motionType"] != "extension"
-                    and self.torso.body.position[0] < self.upperLeg.body.position[0] 
-                    and (
-                            (kneeAngle < config["jointConstraints"]["kneeFlexion"]) 
-                            or (self.joints["knee"]["targetAngle"]  is not None and kneeAngle < self.joints["knee"]["targetAngle"]))
-                    ):
-                self.stayStill("knee")
-                rotationAngle = self.upperLeg.body.rotation_vector.angle_degrees
-                print("Reached flexion knee angle of", kneeAngle)
-                
-            
-            self.joints["knee"]["previousAngle"]  = kneeAngle
-        elif self.joints["knee"]["motor"].rate != 0 or self.joints["knee"]["motor"].max_force < 100:
-            if (
-                    self.joints["knee"]["motionType"] != "extension"
-                    and(
-                            kneeAngle < config["jointConstraints"]["kneeFlexion"]
-                            )
-                ):
-                    self.stayStill()
-                    print("Reached knee flexion angle of ", kneeAngle)
-        
-        
-        if self.joints["pelvis"]["motor"].rate != 0 or self.joints["pelvis"]["motor"].max_force < 100:
-
-            if (
-                    self.joints["pelvis"]["motionType"] != "flexion" #limb not undergoing flexion
-                    and (
-                            (pelvisAngle < config["jointConstraints"]["pelvisExtension"]) 
-                            or (self.joints["pelvis"]["targetAngle"] is not None and pelvisAngle < self.joints["pelvis"]["targetAngle"] ))
-                    ):
-                        self.stayStill("pelvis")
-                        print("Reached extension pelvis angle of",pelvisAngle, config["jointConstraints"]["pelvisExtension"], self.joints["pelvis"]["targetAngle"] )
-                        print("upperArm ", self.upperArm.body.position, "torso ", self.torso.body.position)
-            elif (
-                    self.joints["pelvis"]["motionType"] != "extension" #limb not undergoing flexion
-                    and (
-                            (pelvisAngle > config["jointConstraints"]["pelvisFlexion"]) 
-                            or (self.joints["pelvis"]["targetAngle"]  is not None and pelvisAngle > self.joints["pelvis"]["targetAngle"]))
-                    ):
-                self.stayStill("pelvis")
-                print("Reached flexion pelvis angle of", pelvisAngle, config["jointConstraints"]["pelvisFlexion"],  self.joints["pelvis"]["targetAngle"])
-    """
     
     def kneeAngle(self):
         
@@ -906,4 +889,3 @@ App(man).run()
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
 plt.plot(data)
-

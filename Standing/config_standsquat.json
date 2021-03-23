@@ -5,7 +5,8 @@
     "motorMaxForce": 10000000000,
     "ragdollEnabled": false,
     "motorUsingTargetAngle": true,
-    "constrainJointAngles": true
+    "constrainJointAngles": true,
+    "automatedPumping": true
     
   },
   "LswingConfig":{
