@@ -49,6 +49,8 @@ clock = pygame.time.Clock()
 #Main Simulation loop
 running = True 
 upkey_pressed = 0
+image_counter = 0
+
 while running:
     #print(body.position)
     clock.tick(60)
@@ -89,7 +91,10 @@ while running:
             print("Angular velocity: ", body.angular_velocity)
             print("Position: ", body.position)
             print("Mass: ", body.mass)
-        elif keys[pygame.K_SPACE]: #space arrow
+        elif keys[pygame.K_p]: #p key
+            image_counter = image_counter + 1
+            pygame.image.save(screen, "variable_pendulum" + str(image_counter) +".png")
+        elif keys[pygame.K_SPACE]: #space key
             #Resets spinning
             body.angular_velocity = 0
             
