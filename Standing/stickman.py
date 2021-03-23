@@ -172,22 +172,12 @@ class App:
         self.stickFigure.keys = keys
         
         if keys[pygame.K_UP] and keys[pygame.K_DOWN] == 0:
-             standUpDict = {
-                "knee": {"motorSpeed": 6, "targetAngle": -5},
-                "pelvis": {"motorSpeed": -6, "targetAngle": None}
-                }
-            
-             self.stickFigure.moveStickman(standUpDict)
+             self.stickFigure.stand()
             
             #self.stickFigure.moveLimb("knee", "extension")
             #self.stickFigure.moveLimb("pelvis", "extension", angle=-10)
         elif keys[pygame.K_DOWN] and keys[pygame.K_UP] == 0:
-            standUpDict = {
-                "knee": {"motorSpeed": -6, "targetAngle": None},
-                "pelvis": {"motorSpeed": 6, "targetAngle": 20}
-                }
-            
-            self.stickFigure.moveStickman(standUpDict)
+            self.stickFigure.squat()
             
             #self.stickFigure.moveLimb("knee", "flexion")
             #self.stickFigure.moveLimb("pelvis", "flexion", angle=10)
@@ -354,7 +344,7 @@ class Stickman:
         r = (self.config["swingConfig"]["jointDistances"][0]/2)
         w = v / r
         # Apply force in opposite direction of velocity, proportional to the magnitude of the velocity
-        f_coeff = 200000
+        f_coeff = 150000
         f = -w * f_coeff
         pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2
         self.getJointByNumber(0).apply_force_at_local_point(f, pos)
@@ -540,10 +530,8 @@ class Stickman:
 
         # If stickman approaches previous maximum amplitude, squat
         if abs(angle) > abs(targetAngle) and self.squatIndex == 0:
-            #self.squat()
+            self.squat()
             print("Squatting! >.<")
-            pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2 # PLACEHOLDER
-            self.getJointByNumber(0).apply_force_at_local_point(self.getJointByNumber(0).velocity * 100000, pos) # PLACEHOLDER
             self.squatIndex = 1
 
         # If swing reaches ~0 angular velocity, add angle to maxAngles
@@ -551,10 +539,26 @@ class Stickman:
             self.maxAngles.append(abs(angle))
 
         # If swing vertical (more or less), make stickman stand. Edit this to change when he should stand
-        if abs(angle) < 3 and self.squatIndex == 1:
-            #self.stand()
+        if abs(angle) < 15 and self.squatIndex == 1:
+            self.stand()
             print("Standing! :D")
             self.squatIndex = 0
+
+    def stand(self):
+        standUpDict = {
+            "knee": {"motorSpeed": 6, "targetAngle": -5},
+            "pelvis": {"motorSpeed": -6, "targetAngle": None}
+            }
+            
+        self.moveStickman(standUpDict)
+
+    def squat(self):
+        standUpDict = {
+            "knee": {"motorSpeed": -6, "targetAngle": None},
+            "pelvis": {"motorSpeed": 6, "targetAngle": 20}
+            }
+            
+        self.moveStickman(standUpDict)
 
 
     def moveLimb(self, joint, motionType, angle=None, motorSpeed=None):
@@ -760,7 +764,7 @@ class Stickman:
                     ):
                 self.stayStill("pelvis")
                 print("Reached flexion pelvis angle of", pelvisAngle, config["jointConstraints"]["pelvisFlexion"],  self.joints["pelvis"]["targetAngle"])
-    
+    """
     
     def kneeAngle(self):
         
