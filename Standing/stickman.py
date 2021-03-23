@@ -144,7 +144,7 @@ class App:
         }
         
         self.current_timestep = 0
-        self.timestep_array = [] # array of timesteps
+        self.timestep_array = [0] # array of timesteps
         self.theta = [pivot_ang] # array of pivot angles
         self.thetadot = [0] # array of pivot angular velocities
         
@@ -884,8 +884,16 @@ man = Stickman(space=space, config=config, scale=0.8, lean=0, theta=angle)
 
 data = []
 
-App(man).run()
+Application = App(man)
+Application.run()
+
+t = Application.timestep_array
+angs = Application.theta
+angvels = Application.thetadot
+np.savetxt('plotdata', (t, angs, angvels), delimiter=',')
 
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
+
 plt.plot(data)
+
