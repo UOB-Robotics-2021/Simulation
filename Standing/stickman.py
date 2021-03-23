@@ -138,6 +138,12 @@ class App:
                 "knee": 0,  
         }
         
+        self.current_timestep = 0
+        self.timestep_array = [] # array of timesteps
+        self.theta = [pivot_ang] # array of pivot angles
+        self.thetadot = [0] # array of pivot angular velocities
+        
+        
         
     def run(self):
         while self.running:
@@ -159,6 +165,7 @@ class App:
             for i in range(steps):
                 space.step(1/fps/steps)
             self.update_state()
+            self.save_anlge()
         
         #Exit simulation
         pygame.quit()
@@ -214,6 +221,8 @@ class App:
         elif keys[pygame.K_SPACE]:
             self.stickFigure.stayStill()
             print(self.angles["pivot"])
+        elif keys[pygame.K_t]:
+            print(self.theta)
 
 
     def draw(self):
@@ -277,6 +286,15 @@ class App:
         dv = {key: self.ang_vel[key] - prev_ang_vel[key] for key in self.ang_vel}
         self.ang_acc = {key: dv[key]/dt for key in dv}
         
+        
+    def save_anlge(self):
+        '''Updates the arrays of timesteps, angles and angular velocities'''
+        self.current_timestep += 1/fps
+        self.timestep_array.append(self.current_timestep)
+        self.theta.append(self.angles["pivot"])
+        self.thetadot.append(self.ang_vel["pivot"])
+            
+            
         
         
 
@@ -888,3 +906,4 @@ App(man).run()
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
 plt.plot(data)
+
