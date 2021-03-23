@@ -44,7 +44,7 @@
      "pelvisExtension": -30,
      "pelvisHyperExtension": 15,
      "kneeFlexion": -120,
-     "kneeExtension": 15,
+     "kneeExtension": 5,
      "shoulderFlexion": 90,
      "shoulderExtension": 90,
      "elbowFlexion": 140,

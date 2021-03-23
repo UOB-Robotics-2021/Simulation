@@ -323,9 +323,9 @@ class Stickman:
                       'lowerArm': self.lowerArm}
 
         self.joints = {
-                "knee": {"motor": self.kneeMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "flexionDirection": -1, "extensionDirection":1, "constrainLimb": self.upperLeg.body},
+                "knee": {"motor": self.kneeMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "flexionDirection": -1, "extensionDirection":1, "constrainLimb": "upperLeg"},
                 "foot": {"motor": self.footMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1},
-                "pelvis": {"motor": self.pelvisMotor, "targetAngle": None, "motionType": None, "extensionDirection":-1, "flexionDirection": 1, "constrainLimb": self.torso.body},
+                "pelvis": {"motor": self.pelvisMotor, "targetAngle": None, "motionType": None, "extensionDirection":-1, "flexionDirection": 1, "constrainLimb": "torso"},
                 "shoulder": {"motor": self.shoulderMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":1, "flexionDirection": -1, "constrainLimb": self.upperArm.body},
                 "elbow": {"motor": self.elbowMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1, "constrainLimb": self.lowerArm.body}
                 }
@@ -482,7 +482,7 @@ class Stickman:
                     print("Reached knee flexion angle of ", kneeAngle)
         
         elif self.joints["pelvis"]["motor"].rate != 0 or self.joints["pelvis"]["motor"].max_force < 100:
-            
+
             if (
                     self.joints["pelvis"]["motionType"] != "flexion" #limb not undergoing flexion
                     and (
@@ -503,8 +503,14 @@ class Stickman:
 
     # Methods to measure angles
     def limbAngle(self, joint):
-        body = self.joints[joint]["constrainLimb"]
-        return body.rotation_vector.angle_degrees
+        
+        limbKey = self.joints[joint]["constrainLimb"]
+        body = self.limbs.get(limbKey).body
+        angle=body.rotation_vector.angle_degrees
+        offset = self.config["squatStandConfig"][limbKey][0] + 90
+        angle = angle + offset
+        
+        return angle
 
 angle = 45
 
