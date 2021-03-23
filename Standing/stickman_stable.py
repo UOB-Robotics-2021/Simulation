@@ -1,4 +1,4 @@
-# Import modules
+ # Import modules
 import pymunk
 import pygame
 import json
@@ -98,52 +98,6 @@ class App:
         self.stickFigure = stickFigure
         self.swing = self.stickFigure.swing
         
-        #pivot angle
-        v_p = self.stickFigure.getJointByNumber(1).position - self.stickFigure.getJointByNumber(0).position
-        
-        print(0, self.stickFigure.getJointByNumber(0).position)
-        print(1, self.stickFigure.getJointByNumber(1).position)
-        
-        pivot_ang = math.degrees(np.arctan(v_p[0]/v_p[1]))
-        
-        #joint angle
-        v_j = self.stickFigure.lowerLeg.body.position - self.stickFigure.getJointByNumber(1).position        
-        
-        dot_product = np.dot(v_p, v_j)
-        joint_ang = round(dot_product/(np.linalg.norm(v_p)*np.linalg.norm(v_j)), 6)
-        ang_j = 180 - math.degrees(np.arccos(joint_ang)) # round to avoid arctan errors for small angles
-        
-        self.angles = {
-                "pivot": pivot_ang, 
-                "joint": ang_j,
-                "elbow": self.stickFigure.elbowAngle(),
-                "shoulder": self.stickFigure.shoulderAngle(),
-                "pelvis": self.stickFigure.pelvisAngle(),
-                "knee": self.stickFigure.kneeAngle(),
-        }
-        self.ang_vel = {
-                "pivot": 0, 
-                "joint": 0,
-                "elbow": 0,
-                "shoulder": 0,
-                "pelvis": 0,
-                "knee": 0,
-        }
-        self.ang_acc = {
-                "pivot": 0, #those initial values are incorrect
-                "joint": 0,
-                "elbow": 0,
-                "shoulder": 0,
-                "pelvis": 0,
-                "knee": 0,  
-        }
-        
-        self.current_timestep = 0
-        self.timestep_array = [] # array of timesteps
-        self.theta = [pivot_ang] # array of pivot angles
-        self.thetadot = [0] # array of pivot angular velocities
-        
-        
         
     def run(self):
         while self.running:
@@ -156,16 +110,12 @@ class App:
                 self.stickFigure.applyConstraints()
                 self.stickFigure.swingResistance()
             
-            self.stickFigure.makeDecision(self.angles["pivot"], self.ang_vel["pivot"])
-
             #Update animation
             self.draw()
             self.clock.tick(fps)
 
             for i in range(steps):
                 space.step(1/fps/steps)
-            self.update_state()
-            self.save_anlge()
         
         #Exit simulation
         pygame.quit()
@@ -179,50 +129,16 @@ class App:
         self.stickFigure.keys = keys
         
         if keys[pygame.K_UP] and keys[pygame.K_DOWN] == 0:
-             standUpDict = {
-                "knee": {"motorSpeed": 6, "targetAngle": -5},
-                "pelvis": {"motorSpeed": -6, "targetAngle": None}
-                }
-            
-             self.stickFigure.moveStickman(standUpDict)
-            
-            #self.stickFigure.moveLimb("knee", "extension")
-            #self.stickFigure.moveLimb("pelvis", "extension", angle=-10)
+            self.stickFigure.moveLimb("knee", "extension", angle=1)
         elif keys[pygame.K_DOWN] and keys[pygame.K_UP] == 0:
-            standUpDict = {
-                "knee": {"motorSpeed": -6, "targetAngle": None},
-                "pelvis": {"motorSpeed": 6, "targetAngle": 20}
-                }
-            
-            self.stickFigure.moveStickman(standUpDict)
-            
-            #self.stickFigure.moveLimb("knee", "flexion")
-            #self.stickFigure.moveLimb("pelvis", "flexion", angle=10)
+            self.stickFigure.moveLimb("knee", "flexion", motorSpeed=100)
         elif keys[pygame.K_RIGHT] and keys[pygame.K_LEFT] == 0:
-            standUpDict = {
-                "pelvis": {"motorSpeed": 5, "targetAngle": 10}
-                }
-            self.stickFigure.moveStickman(standUpDict)
-            #self.stickFigure.moveLimb("pelvis", "flexion")
+            self.stickFigure.moveLimb("pelvis", "flexion")
         elif keys[pygame.K_LEFT] and keys[pygame.K_RIGHT] == 0:
-            standUpDict = {
-                "pelvis": {"motorSpeed": -5, "targetAngle": -10}
-                }
-            self.stickFigure.moveStickman(standUpDict)
-            #self.stickFigure.moveLimb("pelvis", "extension")
+            self.stickFigure.moveLimb("pelvis", "extension")
         elif keys[pygame.K_w]:
             self.stickFigure.moveLimb("shoulder", "extension", motorSpeed=1)
         elif keys[pygame.K_s]:
-            print("flex elbow")
-            self.stickFigure.flexElbow()
-            
-        
-        elif keys[pygame.K_i]:
-            print(self.angles)
-        elif keys[pygame.K_v]:
-            print(self.ang_vel)
-        elif keys[pygame.K_y]:
-            print(self.ang_acc)
             self.stickFigure.moveLimb("shoulder", "flexion", motorSpeed=1)
         elif keys[pygame.K_a]:
             self.stickFigure.footMotor.rate = 1
@@ -230,9 +146,6 @@ class App:
             self.stickFigure.footMotor.rate = -1
         elif keys[pygame.K_SPACE]:
             self.stickFigure.stayStill()
-            print(self.angles["pivot"])
-        elif keys[pygame.K_t]:
-            print(self.theta)
 
 
     def draw(self):
@@ -257,56 +170,6 @@ class App:
                                     save_all=True, append_images=self.images[1:],
                                     optimize=True, duration=1000//fps, loop=0)
                 self.images = []
-                
-                
-                
-    def update_state(self):
-        # calculate changes in angles, ang_vel and ang_acc
-        dt = 1/fps
-        
-        
-        prev_angles = {key: self.angles[key] for key in self.angles}
-        prev_ang_vel = self.ang_vel
-        
-        
-        #pivot angle
-        v_p = self.stickFigure.getJointByNumber(1).position - self.stickFigure.getJointByNumber(0).position
-        
-        pivot_ang = math.degrees(np.arctan(v_p[0]/v_p[1]))
-        
-        #joint angle
-        v_j = self.stickFigure.lowerLeg.body.position - self.stickFigure.getJointByNumber(1).position        
-        
-        dot_product = np.dot(v_p, v_j)
-        joint_ang = round(dot_product/(np.linalg.norm(v_p)*np.linalg.norm(v_j)), 6)
-        ang_j = 180 - math.degrees(np.arccos(joint_ang)) # round to avoid arctan errors for small angles
-        
-        self.angles["pivot"] = pivot_ang
-        self.angles["joint"] = ang_j
-        self.angles["elbow"] = self.stickFigure.elbowAngle()
-        self.angles["shoulder"] = self.stickFigure.shoulderAngle()
-        self.angles["pelvis"] = self.stickFigure.pelvisAngle()
-        self.angles["knee"] = self.stickFigure.kneeAngle()
-                
-        
-        
-        dangles = {key: self.angles[key] - prev_angles[key] for key in self.angles} 
-        self.ang_vel = {key: dangles[key]/dt for key in dangles}
-        
-        dv = {key: self.ang_vel[key] - prev_ang_vel[key] for key in self.ang_vel}
-        self.ang_acc = {key: dv[key]/dt for key in dv}
-        
-        
-    def save_anlge(self):
-        '''Updates the arrays of timesteps, angles and angular velocities'''
-        self.current_timestep += 1/fps
-        self.timestep_array.append(self.current_timestep)
-        self.theta.append(self.angles["pivot"])
-        self.thetadot.append(self.ang_vel["pivot"])
-            
-            
-        
-        
 
 # Code to generate figure and swing
 class Stickman:
@@ -327,7 +190,6 @@ class Stickman:
         self.stickFigureAngle = self.theta - self.lean
         self.swingAngle = self.theta + 90
         self.maxAngles = [self.theta]
-        self.squatIndex = 0
 
         self.swing = self.generateSwing()
         self.generateStickman()
@@ -454,17 +316,16 @@ class Stickman:
         self.holdFoot = PivotJoint(self.getJointByNumber(foot_index), self.lowerLeg.body, self.botVec)
 
         self.previousKneeAngle = None
-        
-        print(dir(self.kneeMotor))
+
         
         # Limbs
         self.limbs = {'lowerLeg': self.lowerLeg, 'upperLeg': self.upperLeg, 'torso': self.torso, 'upperArm': self.upperArm,
                       'lowerArm': self.lowerArm}
 
         self.joints = {
-                "knee": {"motor": self.kneeMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "flexionDirection": -1, "extensionDirection":1, "constrainLimb": "upperLeg"},
+                "knee": {"motor": self.kneeMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "flexionDirection": -1, "extensionDirection":1, "constrainLimb": self.upperLeg.body},
                 "foot": {"motor": self.footMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1},
-                "pelvis": {"motor": self.pelvisMotor, "targetAngle": None, "motionType": None, "extensionDirection":-1, "flexionDirection": 1, "constrainLimb": "torso"},
+                "pelvis": {"motor": self.pelvisMotor, "targetAngle": None, "motionType": None, "extensionDirection":-1, "flexionDirection": 1, "constrainLimb": self.torso.body},
                 "shoulder": {"motor": self.shoulderMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":1, "flexionDirection": -1, "constrainLimb": self.upperArm.body},
                 "elbow": {"motor": self.elbowMotor, "targetAngle": None, "motionType": None, "previousAngle": None, "extensionDirection":-1, "flexionDirection": 1, "constrainLimb": self.lowerArm.body}
                 }
@@ -495,85 +356,14 @@ class Stickman:
 
     def vectorSum(self, v1, v2):
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
-    
-    
-    def moveStickman(self, moveJoints):
-        for joint in moveJoints.keys():
-            motorSpeed = moveJoints[joint]["motorSpeed"]
-            angle = moveJoints[joint]["targetAngle"]
-            
-            
-            #If user set a motor speed that is too high
-            if abs(motorSpeed) > config["jointConstraints"]["jointSpeed"]:
-                if motorSpeed > 0:
-                    motorSpeed = config["jointConstraints"]["jointSpeed"]
-                else:
-                    motorSpeed = -config["jointConstraints"]["jointSpeed"]
 
-            
-     
-            #Clockwise Motion    
-            if motorSpeed > 0:
-                motionType = " clockwise rotation "
-     
-                #Apply flexion constraints if flexion is in clockwise direction
-                if self.joints[joint]["flexionDirection"] == 1:
-                    if angle is None or angle > config["jointConstraints"][joint+"Flexion"]:
-                        angle = config["jointConstraints"][joint+"Flexion"]
-                #Apply extension constraints if extension is in clockwise direction
-                else:
-                    if angle is None or angle > config["jointConstraints"][joint+"Extension"]:
-                        angle = config["jointConstraints"][joint+"Extension"]
-            #Anticlockwise Motion
-            else:
-                motionType = " anti-clockwise rotation "
-                #Apply flexion constraints if flexion is in anticlockwise direction
-                if self.joints[joint]["flexionDirection"] == -1:
-                    if angle is None or angle < config["jointConstraints"][joint+"Flexion"]:
-                        angle = config["jointConstraints"][joint+"Flexion"]
-                #Apply extension constraints if extension is in clockwise direction
-                else: 
-                    if angle is None or angle < config["jointConstraints"][joint+"Extension"]:
-                        angle = config["jointConstraints"][joint+"Extension"]
-                
-            #Drive motor
-            self.joints[joint]["motor"].max_force = self.config["environmentConfig"]["motorMaxForce"]
-            #Motor rates defined so negative rates are clockwise
-            self.joints[joint]["motor"].rate = -motorSpeed  
-            
-            self.joints[joint]["targetAngle"] = angle
-            
-            if self.config["environmentConfig"]["motorUsingTargetAngle"]:
-                print(joint + " " + motionType + " to" + " " + str(angle) + " at a rate of " + str(motorSpeed))
-            else:
-                print(joint + " " + motionType +  " at a rate of " + str(motorSpeed))
-                
-        return
-            
-    
     # Methods to move the stickman
-    def makeDecision(self, angle, angVel):
-        offset = 15
-        targetAngle = self.maxAngles[-1] - offset
-
-        # If stickman approaches previous maximum amplitude, squat
-        if abs(angle) > abs(targetAngle) and self.squatIndex == 0:
-            #self.squat()
-            print("Squatting! >.<")
-            pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2 # PLACEHOLDER
-            self.getJointByNumber(0).apply_force_at_local_point(self.getJointByNumber(0).velocity * 100000, pos) # PLACEHOLDER
-            self.squatIndex = 1
-
-        # If swing reaches ~0 angular velocity, add angle to maxAngles
-        if abs(angle) > abs(self.maxAngles[-1]) and abs(angVel) < 3:
-            self.maxAngles.append(abs(angle))
-
-        # If swing vertical (more or less), make stickman stand. Edit this to change when he should stand
-        if abs(angle) < 3 and self.squatIndex == 1:
-            #self.stand()
-            print("Standing! :D")
-            self.squatIndex = 0
-
+    def makeDecision(self):
+        # TODO: Set initial max amplitude to inputted theta
+        # TODO: Create list of max amplitude. If length of list is odd, action will occur on right side +ve theta, opposite for even
+        # Action will make him squat and add to the list of maxAmplitude, access with maxAngles[-1]
+        # TODO: When swing is at centre, stand
+        pass
 
     def moveLimb(self, joint, motionType, angle=None, motorSpeed=None):
        
@@ -625,12 +415,6 @@ class Stickman:
         return
     
     
-    def flexPelvis(self):
-        self.pelvisMotor.rate = -1
-    
-    def extendPelvis(self):
-        self.pelvisMotor.rate = 1
-    
     def flexElbow(self):
         print("flex elbow")
         self.shoulderMotor.max_force = 100*self.config["environmentConfig"]["motorMaxForce"]
@@ -655,75 +439,14 @@ class Stickman:
             
         self.kneeMotion = None
         
-        print("pelvisAngle: ", self.pelvisAngle(), "kneeAngle: ", self.kneeAngle())
-        
     def applyConstraints(self):
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
-        #print(self.kneeMotor.impulse)
         
-        constrainJoints = ["knee"]
-       
-        for joint in constrainJoints:
-            
-            if joint == "knee":
-                jointAngle = self.kneeAngle()
-            elif joint == "pelvis":
-                jointAngle = self.pelvisAngle()
-            
-            #Run constraints if motor driven or disengaged
-            if self.joints[joint]["motor"].rate != 0 or self.joints[joint]["motor"].max_force < 100:
-                #Clockwise rotation
-                if self.joints[joint]["motor"].rate < 0:
-                    #Apply flexion constraint if flexion is clockwise
-                    if self.joints[joint]["flexionDirection"] == 1:
-                        #If flexion constraint reached
-                        if jointAngle > config["jointConstraints"][joint+"Flexion"]:
-                            self.stayStill()
-                            print("Reached clockwise flexion " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle > self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached clockwise flexion " + joint + " target angle of", jointAngle)
-                    #Apply extension constraint if extension is clockwise
-                    else:
-                        #If extension constraint reached
-                        if jointAngle > config["jointConstraints"][joint+"Extension"]:
-                            self.stayStill()
-                            print("Reached clockwise extension " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle > self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached clockwise extension " + joint + " target angle of", jointAngle)            
-                #Anticlockwise rotation            
-                elif self.joints[joint]["motor"].rate > 0:
-                    #Apply flexion constraint if flexion is clockwise
-                    if self.joints[joint]["flexionDirection"] == -1:
-                        #If flexion constraint reached
-                        if jointAngle < config["jointConstraints"][joint+"Flexion"]:
-                            self.stayStill()
-                            print("Reached anticlockwise flexion " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle < self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached anticlockwise flexion " + joint + " target angle of", jointAngle)
-                    #Apply extension constraint if extension is clockwise
-                    else:
-                        #If extension constraint reached
-                        if jointAngle < config["jointConstraints"][joint+"Extension"]:
-                            self.stayStill()
-                            print("Reached anticlockwise extension " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle < self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached anticlockwise extension " + joint + " target angle of", jointAngle, self.joints[joint]["targetAngle"])
-                
-                        
-               
-               
-                
-        """
+        kneeAngle = self.limbAngle("knee")
+        pelvisAngle = self.pelvisAngle()
+        print([pelvisAngle])
         if self.kneeMotor.rate != 0 or self.kneeMotor.max_force < 100: #If motor engaged or limited by stickman being a ragdoll
             if (
                     self.joints["knee"]["motionType"] != "flexion"
@@ -760,7 +483,7 @@ class Stickman:
         
         
         if self.joints["pelvis"]["motor"].rate != 0 or self.joints["pelvis"]["motor"].max_force < 100:
-
+            
             if (
                     self.joints["pelvis"]["motionType"] != "flexion" #limb not undergoing flexion
                     and (
@@ -769,7 +492,7 @@ class Stickman:
                     ):
                         self.stayStill("pelvis")
                         print("Reached extension pelvis angle of",pelvisAngle, config["jointConstraints"]["pelvisExtension"], self.joints["pelvis"]["targetAngle"] )
-                        print("upperArm ", self.upperArm.body.position, "torso ", self.torso.body.position)
+                        print(self.joints["pelvis"]["motionType"])
             elif (
                     self.joints["pelvis"]["motionType"] != "extension" #limb not undergoing flexion
                     and (
@@ -778,118 +501,27 @@ class Stickman:
                     ):
                 self.stayStill("pelvis")
                 print("Reached flexion pelvis angle of", pelvisAngle, config["jointConstraints"]["pelvisFlexion"],  self.joints["pelvis"]["targetAngle"])
-    
-    
-    def kneeAngle(self):
-        
-        #upperLegVector = self.torso.body.position - self.upperLeg.body.position
-        upperLegVector = self.upperLeg.body.position - self.torso.body.position
-        lowerLegVector = self.lowerLeg.body.position - self.upperLeg.body.position
-        
-        
-        v0  = upperLegVector / np.linalg.norm(upperLegVector)
-        v1 = lowerLegVector / np.linalg.norm(lowerLegVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        #Angles defined so 0 is at 12 and 180 is at 6
-        if self.torso.body.position[0] < self.upperLeg.body.position[0]:
-            angle = 360 - angle    
-      
-        
-        return angle
-    
-    def pelvisAngle(self):
-        
-        torsoVector = self.upperLeg.body.position - self.upperArm.body.position
-        upperLegVector = self.upperLeg.body.position - self.torso.body.position
-        
-        v0  = torsoVector / np.linalg.norm(torsoVector)
-        v1 = upperLegVector / np.linalg.norm(upperLegVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        #Angles defined so 0 is at 12 and 180 is at 6
-        if self.upperArm.body.position[0] < self.torso.body.position[0]:
-            angle = 360-angle
-        
-        
-        return angle
-    
-    def elbowAngle(self):
-        upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
-        lowerArmVector = self.lowerArm.body.position - self.getJointByNumber(1).position
-        
-        v0  = upperArmVector / np.linalg.norm(upperArmVector)
-        v1 = lowerArmVector / np.linalg.norm(lowerArmVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        return angle
-    
-    def shoulderAngle(self):
-        upperArmVector = self.upperArm.body.position - self.lowerArm.body.position
-        torsoVector = self.upperArm.body.position - self.torso.body.position
-        
-        v0  = upperArmVector / np.linalg.norm(upperArmVector)
-        v1 = torsoVector / np.linalg.norm(torsoVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        return angle
-    
-    # Methods to measure angles
-    def jointAngle(self, joint):
-        limb = self.joints[joint]
-
-        if limb == "lowerLeg":
-            return self.limbs[limb].body.angle
 
     # Methods to measure angles
     def limbAngle(self, joint):
-        
-        limbKey = self.joints[joint]["constrainLimb"]
-        body = self.limbs.get(limbKey).body
-        angle=body.rotation_vector.angle_degrees
-        offset = self.config["squatStandConfig"][limbKey][0] + 90
-        angle = angle + offset
-        
-        return angle
-    
-    def kneeAngle(self):
-        
-        #upperLegVector = self.torso.body.position - self.upperLeg.body.position
-        upperLegVector = self.torso.body.position - self.upperLeg.body.position
-        lowerLegVector = self.upperLeg.body.position - self.lowerLeg.body.position
-        
-        
-        v0  = upperLegVector / np.linalg.norm(upperLegVector)
-        v1 = lowerLegVector / np.linalg.norm(lowerLegVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        #Angles defined so 0 is at 12 and 180 is at 6
-        if self.torso.body.position[0] < self.upperLeg.body.position[0]:
-            angle = -angle    
-      
-        
-        return angle
+        body = self.joints[joint]["constrainLimb"]
+        return body.rotation_vector.angle_degrees
     
     def pelvisAngle(self):
    
-        torsoVector = self.upperArm.body.position - self.torso.body.position
-        upperLegVector = self.torso.body.position - self.upperLeg.body.position
+       torsoVector = self.upperArm.body.position - self.torso.body.position
+       upperLegVector = self.torso.body.position - self.upperLeg.body.position
 
-        v0  = torsoVector / np.linalg.norm(torsoVector)
-        v1 = upperLegVector / np.linalg.norm(upperLegVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        #Angles defined so 0 is at 12 and 180 is at 6
-        if self.upperArm.body.position[0] < self.torso.body.position[0]:
-            angle = -angle
-        
-        return angle
+       v0  = torsoVector / np.linalg.norm(torsoVector)
+       v1 = upperLegVector / np.linalg.norm(upperLegVector)
+       dot_product = np.dot(v0, v1)
+       angle = math.degrees(np.arccos(dot_product))
+    
+       #Angles defined so 0 is at 12 and 180 is at 6
+       if self.upperArm.body.position[0] < self.torso.body.position[0]:
+         angle = -angle
+    
+       return angle
 
 angle = 45
 
@@ -902,4 +534,3 @@ App(man).run()
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
 plt.plot(data)
-
