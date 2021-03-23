@@ -148,9 +148,9 @@ class App:
             if self.stickFigure.config["environmentConfig"]["constrainJointAngles"]:
                 #Apply constraints every timestep
                 self.stickFigure.applyConstraints()
-                #self.stickFigure.swingResistance()
+                self.stickFigure.swingResistance()
             
-            self.stickFigure.makeDecision(self.angles["pivot"])
+            self.stickFigure.makeDecision(self.angles["pivot"], self.ang_vel["pivot"])
 
             #Update animation
             self.draw()
@@ -454,28 +454,23 @@ class Stickman:
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
 
     # Methods to move the stickman
-    def makeDecision(self, angle):
-        # TODO: Create list of max amplitude. If length of list is odd, action will occur on right side +ve theta, opposite for even
-        #print("Angle: %s | Condition: %s | Thinking..." % (angle, -abs(self.maxAngles[-1]-15)))
+    def makeDecision(self, angle, angVel):
+        offset = 15
+        targetAngle = self.maxAngles[-1] - offset
 
-        offset = 10
-
-        if angle < 0:
-            targetAngle = self.maxAngles[-1] + offset
-        else:
-            targetAngle = self.maxAngles[-1] - offset
-
-        
-        if abs(angle) > targetAngle and self.squatIndex == 0:
+        # If stickman approaches previous maximum amplitude, squat
+        if abs(angle) > abs(targetAngle) and self.squatIndex == 0:
             #self.squat()
-            print("Squatting! >.< MaxAngle = %s" % self.maxAngles[-1])
-            pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2
-            self.getJointByNumber(0).apply_force_at_local_point(self.getJointByNumber(0).velocity * 80000, pos)
+            print("Squatting! >.<")
+            pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2 # PLACEHOLDER
+            self.getJointByNumber(0).apply_force_at_local_point(self.getJointByNumber(0).velocity * 100000, pos) # PLACEHOLDER
             self.squatIndex = 1
-        if abs(angle) > abs(self.maxAngles[-1]):
-            self.maxAngles.append(angle)
-        # Action will make him squat and add to the list of maxAmplitude, access with maxAngles[-1]
-        # TODO: When swing is at centre, stand
+
+        # If swing reaches ~0 angular velocity, add angle to maxAngles
+        if abs(angle) > abs(self.maxAngles[-1]) and abs(angVel) < 3:
+            self.maxAngles.append(abs(angle))
+
+        # If swing vertical (more or less), make stickman stand. Edit this to change when he should stand
         if abs(angle) < 3 and self.squatIndex == 1:
             #self.stand()
             print("Standing! :D")
