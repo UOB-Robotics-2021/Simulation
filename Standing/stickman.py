@@ -760,7 +760,7 @@ class Stickman:
                     ):
                 self.stayStill("pelvis")
                 print("Reached flexion pelvis angle of", pelvisAngle, config["jointConstraints"]["pelvisFlexion"],  self.joints["pelvis"]["targetAngle"])
-    
+           """
     
     def kneeAngle(self):
         
