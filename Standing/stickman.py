@@ -468,7 +468,7 @@ class Stickman:
         print(joint + " " + motionType +  " " + "to" + " " + str(angle))
         return
     
-
+    
     def flexPelvis(self):
         self.pelvisMotor.rate = -1
     
