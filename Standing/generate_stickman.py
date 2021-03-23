@@ -9,6 +9,7 @@ Created on Tue Feb 23 15:09:39 2021
 import pymunk
 import pygame
 import json
+import os
 
 from pymunk.pygame_util import *
 from pymunk.vec2d import Vec2d
@@ -28,7 +29,11 @@ def loadConfig(configFile):
 def vector_sum(a1, a2):
     return [(a1[0]+a2[0]), (a1[1]+a2[1])]
 
-config = loadConfig('config_stickman.json')["squatStandConfig"]
+dir_name = os.path.basename(os.getcwd())
+if dir_name == "Stickman":
+    config = loadConfig('config_stickman.json')["squatStandConfig"]
+else:
+    config = loadConfig('Stickman//config_stickman.json')["squatStandConfig"]
 
 #Set-up environment
 space = pymunk.Space()
@@ -65,16 +70,25 @@ class PivotJoint:
         space.add(joint)
 
 class Segment:
-    def __init__(self, p0, v, m=10, radius=2):
-        self.body = pymunk.Body()
-        self.body.position = p0
-        shape = pymunk.Segment(self.body, (0, 0), v, radius)
+    def __init__(self, p0, v, m=10, radius=2, body=0):
+
+        if body == 0:
+            self.body = pymunk.Body()
+            self.body.position = p0
+            shape = pymunk.Segment(self.body, (0, 0), v, radius)
+        else:
+            print(body)
+            shape = pymunk.Segment(body, (0, 0), v, radius)
         shape.mass = m
         shape.density = 0.1
         shape.elasticity = 0.5
         shape.filter = pymunk.ShapeFilter(categories=0b1,mask=pymunk.ShapeFilter.ALL_MASKS() ^ 0b1)
         shape.color = (0, 255, 0, 0)
-        space.add(self.body, shape)
+        
+        if body == 0:
+            space.add(self.body, shape)
+        else:
+            space.add(shape)
 
 
 class Circle:
@@ -101,13 +115,18 @@ class App:
         self.stick_figure = man
 
     def run(self):
+        m=0
         while self.running:
+            m=m+1
+            #print(self.stick_figure.upperLeg.body.angle)
             for event in pygame.event.get():
                 self.do_event(event)
  
             self.draw()
             self.clock.tick(fps)
-
+            
+            #self.stick_figure.apply_constraints(m)
+            
             for i in range(steps):
                 space.step(1/fps/steps)
 
@@ -124,7 +143,8 @@ class App:
             self.stick_figure.squat()
         elif keys[pygame.K_RIGHT]:
             self.stick_figure.stop_motion()
-        
+        elif keys[pygame.K_i]: #i key:
+            self.stick_figure.print_info()
 
     def draw(self):
         self.screen.fill(GRAY)
@@ -162,42 +182,42 @@ class Stickman:
         # The head has format --> "head": [radius, mass]
         self.offset = Vec2d(x, y) # Allows you to move the stickman around
         
+        #Generate foot
         self.anklePosition = config["anklePosition"] + self.offset
+        #self.footVector = self.dirVec("foot", theta, scale)
+        #self.foot = Segment(self.anklePosition, self.footVector, self.limbMass("foot"))
 
-        self.footVector = self.dirVec("foot", theta, scale)
-        self.foot = Segment(self.anklePosition, self.footVector, self.limbMass("foot"))
-
+        #Generate lower leg 
         self.lowerLegVector = self.dirVec("lowerLeg", theta, scale)
         self.lowerLeg = Segment(self.anklePosition, self.lowerLegVector, self.limbMass("lowerLeg"))
-        self.ankle = PivotJoint(self.foot.body, self.lowerLeg.body, (0,0))
-
-        self.kneePosition = vector_sum(self.anklePosition, self.lowerLegVector)
         
+        #self.ankle = PivotJoint(self.foot.body, self.lowerLeg.body, (0,0))
+
+        #Generate upper leg
+        self.kneePosition = vector_sum(self.anklePosition, self.lowerLegVector)
         self.upperLegVector = self.dirVec("upperLeg", theta, scale)
         self.upperLeg = Segment(self.kneePosition, self.upperLegVector, self.limbMass("upperLeg"))
         self.knee = PivotJoint(self.lowerLeg.body, self.upperLeg.body, self.lowerLegVector)
-        self.kneeMotor = SimpleMotor(self.lowerLeg.body, self.upperLeg.body, rate=0)
-
         
+        #Generate torso
         self.pelvisPosition = vector_sum(self.kneePosition, self.upperLegVector)
-        
         self.torsoVector = self.dirVec("torso", theta, scale)
         self.torso = Segment(self.pelvisPosition, self.torsoVector, self.limbMass("torso"))
         self.pelvis = PivotJoint(self.upperLeg.body, self.torso.body, self.upperLegVector)
-        self.pelvisMotor = SimpleMotor(self.upperLeg.body, self.torso.body, rate=0)
-
+       
+        #Generate upper arm
         self.shoulderPosition = vector_sum(self.pelvisPosition, self.torsoVector)
-
         self.upperArmVector = self.dirVec("upperArm", theta, scale)
         self.upperArm = Segment(self.shoulderPosition, self.upperArmVector, self.limbMass("upperArm"))
-        self.shoulder = PivotJoint(self.torso.body, self.upperArm.body, self.torsoVector)
+        self.shoulderArm = PivotJoint(self.torso.body, self.upperArm.body, self.torsoVector)
 
+        #Generate lower arm
         self.elbowPosition = vector_sum(self.shoulderPosition, self.upperArmVector)
         
         self.lowerArmVector = self.dirVec("lowerArm", theta, scale)
         self.lowerArm = Segment(self.elbowPosition, self.lowerArmVector, self.limbMass("lowerArm"))
+        self.handPosition = vector_sum(self.elbowPosition, self.lowerArmVector)
         self.elbow = PivotJoint(self.upperArm.body, self.lowerArm.body, self.upperArmVector)
-        self.elbowMotor = SimpleMotor(self.upperArm.body, self.lowerArm.body, rate=0)
         self.neckPosition = vector_sum(self.pelvisPosition, self.torsoVector)
         
         #Add neck
@@ -205,7 +225,7 @@ class Stickman:
         self.neck = Segment(self.neckPosition, self.neckVector, 10)
         self.neckJoint = PivotJoint(self.upperArm.body, self.neck.body)
         
-        #Add head
+        #Generate head
         headPosition = vector_sum(self.neckPosition, self.neckVector)
         headRadius = config["head"][0]
         
@@ -219,6 +239,8 @@ class Stickman:
         self.head = Circle(pos=headPosition, radius=headRadius)
         self.headJoint = PinJoint(self.neck.body, self.head.body, self.neckVector)
 
+        self.stopped_at = 0
+
     def dirVec(self, limb, rotation, scale):
         angle = config[limb][0] + rotation
         return scale * config[limb][1] * Vec2d(np.cos(angle * np.pi/180), np.sin(angle * np.pi/180))
@@ -226,32 +248,65 @@ class Stickman:
     def limbMass(self, limb):
         return config[limb][2]
     
-    def squat(self):
-        print("Squat")
+    def squat(self, max_force=100):
         """
-        self.upperLeg.body.apply_impulse_at_local_point([-50, 0], self.pelvisPosition)
-        self.upperLeg.body.apply_impulse_at_local_point([50, 0], self.kneePosition)
+        Applies a counter-clockwise torque to stickman's upper leg (pelvis and knee) to cause squatting.
+        
+        Parameters:
+            max_force(int) - maximum force to be applied
+        
+        """
+        if self.upperLeg.body.position[1] > self.torso.body.position[1]:
+            print("Squat")
+            
+            #Apply force to pelvis and opposite force to knee to cause anti-clockwise torque of upper leg
+            f1 = [-max_force*np.abs(np.cos(self.upperLeg.body.angle)), -max_force*np.abs(np.sin(self.upperLeg.body.angle))]
+            f2 = [-f1[0], -f1[1]]
+            self.upperLeg.body.apply_impulse_at_local_point(f1, self.pelvisPosition)
+            self.upperLeg.body.apply_impulse_at_local_point(f2, self.kneePosition)
+        else:
+            print("Sitting restricted")
+            self.stop_motion()
+        """
+        #Apply force to elbow and opposite force to hand to cause clockwise torque of upper leg
+        f1 = [max_force*np.sin(self.lowerArm.body.angle), max_force*np.cos(self.upperArm.body.angle)]
+        f2 = [-f1[0], -f1[1]]
+        self.lowerArm.body.apply_impulse_at_local_point(f1, self.elbowPosition)
+        self.lowerArm.body.apply_impulse_at_local_point(f2, self.handPosition)
+        """
+
+    def stand(self, max_force=1000):
+        """
+        Make stickman stand using counter-clockwise upper leg torque and clockwise upper arm torque.
+        
+        Parameters:
+            max_force(int) - maximum force to be applied
+        
         """
         
-        self.kneeMotor = SimpleMotor(self.lowerLeg.body, self.upperLeg.body, rate=1)
-        self.pelvisMotor = SimpleMotor(self.upperLeg.body, self.torso.body, rate=1)
-        self.elbowMotor = SimpleMotor(self.upperArm.body, self.lowerArm.body, rate=-1)
-       
-    def stand(self):
-        print("Stand")
-        print(dir(self.kneeMotor))
+        if self.upperLeg.body.position[0] > self.torso.body.position[0]:
+            #Apply force to pelvis and opposite force to knee to cause clockwise torque of upper leg
+            f1 = [-max_force*np.cos(self.upperLeg.body.angle), -max_force*np.sin(self.upperLeg.body.angle)]
+            f2 = [-f1[0], -f1[1]]
+            print(f1, f2)
+            self.upperLeg.body.apply_impulse_at_local_point(f1, self.pelvisPosition)
+            self.upperLeg.body.apply_impulse_at_local_point(f2, self.kneePosition)
+        else:
+            print("Standing restricted")
+            self.stop_motion()
         """
-        self.upperLeg.body.apply_impulse_at_local_point([0, -1000], self.pelvisPosition)
-        self.upperLeg.body.apply_impulse_at_local_point([0, 1000], self.kneePosition)
+        #Apply force to elbow and opposite force to hand to cause clockwise torque of upper leg
+        f1 = [-max_force*np.sin(self.lowerArm.body.angle), -max_force*np.cos(self.upperArm.body.angle)]
+        f2 = [f1[0], f1[1]]
+        self.lowerArm.body.apply_impulse_at_local_point(f1, self.elbowPosition)
+        self.lowerArm.body.apply_impulse_at_local_point(f2, self.handPosition)
         """
     def stop_motion(self):
-        print("Stop motion")
-        
-        self.kneeMotor = SimpleMotor(self.lowerLeg.body, self.upperLeg.body, rate=0)
-        self.pelvisMotor = SimpleMotor(self.upperLeg.body, self.torso.body, rate=0)
-        self.elbowMotor = SimpleMotor(self.upperArm.body, self.lowerArm.body, rate=-1)
         """
-        print(self.upperLeg.body.force)
+        Stops stickman moving by setting velocity of all its parts to 0
+        """
+        #print("Stop motion")
+        
         self.foot.body.velocity = pymunk.Vec2d(0, 0)
         self.lowerLeg.body.velocity = pymunk.Vec2d(0, 0)
         self.upperLeg.body.velocity = pymunk.Vec2d(0, 0)
@@ -260,8 +315,33 @@ class Stickman:
         self.lowerArm.body.velocity = pymunk.Vec2d(0, 0)
         self.neck.body.velocity = pymunk.Vec2d(0, 0)
         self.head.body.velocity = pymunk.Vec2d(0, 0)
+        
+        #self.upperLeg.body.sleep_with_group(self.upperLeg.body, 10)
+        
+    def apply_constraints(self, i=0):
         """
-        self.kneeMotor.rate = 0
+        Stops motion if joints breach angle range
+        """
+ 
+        if self.upperLeg.body.angle < -1.1*config["maxKneeAngle"] and (self.stopped_at==0 or i < (self.stopped_at+10)):
+            print("Stop motion", i)
+            self.stop_motion()
+            if i > (self.stopped_at+20): 
+                self.stopped_at = i
+        elif self.upperLeg.body.position[1] < self.torso.body.position[1] and (self.stopped_at==0 or i < (self.stopped_at+10)):
+            print("Stop squatting")
+            self.stop_motion()
+            if i > (self.stopped_at+20): 
+                self.stopped_at = i
+        elif self.upperLeg.body.position[0] < self.torso.body.position[0]:
+            self.stop_motion()
+            print("stop standingg")
+        elif self.upperLeg.body.angle > 0:
+            print("Stop motion")
+            self.stop_motion()
     
+            
+    def print_info(self, max_force=10):
+        print(self.upperLeg.body.angle)
 man = Stickman(x=150, y=250, theta=0, scale=1)
 App(man).run()
