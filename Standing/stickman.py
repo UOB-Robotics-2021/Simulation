@@ -189,6 +189,7 @@ class Stickman:
         self.theta = theta
         self.stickFigureAngle = self.theta - self.lean
         self.swingAngle = self.theta + 90
+        self.maxAngles = [self.theta]
 
         self.swing = self.generateSwing()
         self.generateStickman()
@@ -208,7 +209,7 @@ class Stickman:
 
         self.topVec = config["jointDistances"][0] * Vec2d(np.cos(self.swingAngle * np.pi/180), np.sin(self.swingAngle * np.pi/180))
         topSegment = Segment(top.position, self.topVec, 1, 2, (0, 0, 255, 0))
-        PivotJoint(b0, topSegment.body, top.position)
+        PivotJoint(top, topSegment.body, (0, 0))
 
         self.botVec = config["jointDistances"][1] * Vec2d(np.cos(self.swingAngle * np.pi/180), np.sin(self.swingAngle * np.pi/180))
         botSegment = Segment(top.position + self.topVec, self.botVec, 1, 2, (0, 0, 255, 0))
@@ -256,13 +257,9 @@ class Stickman:
         """
         # In the json file, the format for limbs is --> "limb": [angle, length, mass].
         # The head has format --> "head": [radius, mass]
-        self.theta = self.theta - self.lean
-        self.maxLegAngles = [0, np.pi/2]
-        
         foot_index = -1
         hand_index = 1
         self.hand_index, self.foot_index = hand_index, foot_index
-        self.maxLegAngles = [0, np.pi/2]
         self.footPosition = self.swing['rod'][foot_index].position + self.botVec
         
         #Generate lower leg and knee
@@ -289,6 +286,7 @@ class Stickman:
         self.pelvisMotor = pymunk.SimpleMotor(self.upperLeg.body, self.torso.body, 0)
         self.pelvisMotor.collide_bodies = False
         self.space.add(self.pelvisMotor)
+
         #Generate shoulder and upper arm
         self.shoulderPosition = self.vectorSum(self.pelvisPosition, self.torsoVector)
         self.upperArmVector = self.dirVec("upperArm")
@@ -360,6 +358,13 @@ class Stickman:
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
 
     # Methods to move the stickman
+    def makeDecision(self):
+        # TODO: Set initial max amplitude to inputted theta
+        # TODO: Create list of max amplitude. If length of list is odd, action will occur on right side +ve theta, opposite for even
+        # Action will make him squat and add to the list of maxAmplitude, access with maxAngles[-1]
+        # TODO: When swing is at centre, stand
+        pass
+
     def moveLimb(self, joint, motionType, angle=None, motorSpeed=None):
        
         
