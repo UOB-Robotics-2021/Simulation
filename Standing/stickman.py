@@ -283,7 +283,7 @@ class App:
         self.angles["pelvis"] = self.stickFigure.pelvisAngle()
         self.angles["knee"] = self.stickFigure.kneeAngle()
         
-        self.dataArray = np.append(self.dataArray, self.stickFigure.calculateTotalEnergy())    
+        self.dataArray = np.append(self.dataArray, self.angles["pivot"])    
         
 
         
@@ -373,7 +373,7 @@ class Stickman:
         r = (self.config["swingConfig"]["jointDistances"][0]/2)
         w = v / r
         # Apply force in opposite direction of velocity, proportional to the magnitude of the velocity
-        f_coeff = 140000
+        f_coeff = 160e+3
         f = -w * f_coeff
         pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2
         self.getJointByNumber(0).apply_force_at_local_point(f, pos)
@@ -700,8 +700,7 @@ class Stickman:
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
-
-        kneeAngle = self.kneeAngle()
+        kneeAngle = self.jointAngle('knee')
         
         #Run constraints if motor driven or disengaged
         if self.joints["knee"]["motor"].rate != 0 or self.joints["knee"]["motor"].max_force < 100:
@@ -794,10 +793,33 @@ class Stickman:
     
     # Methods to measure angles
     def jointAngle(self, joint):
-        limb = self.joints[joint]
+        limb = self.joints[joint]["constrainLimb"]
 
         if limb == "lowerLeg":
             return self.limbs[limb].body.angle
+
+        temp = list(self.limbs)
+        
+        if limb == "lowerArm":
+            firstVector = self.limbs[limb].body.position - self.getJointByNumber(self.hand_index).position
+        else:
+            nextKey = temp[temp.index(limb) + 1]
+            firstVector = self.limbs[nextKey].body.position - self.limbs[limb].body.position
+
+        prevKey = temp[temp.index(limb) - 1]
+        secondVector = self.limbs[limb].body.position - self.limbs[prevKey].body.position
+
+        v0 = firstVector / np.linalg.norm(firstVector)
+        v1 = secondVector / np.linalg.norm(secondVector)
+        dotProduct = np.dot(v0, v1)
+        angle = math.degrees(np.arccos(dotProduct))
+
+        try:
+            sign = self.limbs[limb].body.angle/abs(self.limbs[limb].body.angle)
+        except ZeroDivisionError:
+            sign = 1
+
+        return angle * sign
 
     # Methods to measure angles
     def limbAngle(self, joint):
@@ -811,7 +833,7 @@ class Stickman:
         return angle
   
 
-angle = 45
+angle = 30
 
 man = Stickman(space=space, config=config, scale=0.8, lean=0, theta=angle)
 
@@ -830,9 +852,9 @@ data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
 
 #Save stickman Data
-dataDict  = {'TotalEnergy': Application.dataArray}
+dataDict  = {'Friction': Application.dataArray}
 
-df = pd.DataFrame(Application.dataArray, columns=["total_energy"])
+df = pd.DataFrame(Application.dataArray, columns=["Angle"])
 
 print(Application.dataArray)
 #print(data)
