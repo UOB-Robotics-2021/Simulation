@@ -704,78 +704,39 @@ class Stickman:
         """
         Stops motion if constraints breached (prevents user from holding down an arrow key)
         """
-        #print(self.kneeMotor.impulse)
+
+        kneeAngle = self.kneeAngle()
         
-        #print("kinetic Energy", self.upperLeg.body.kinetic_energy)
-        
-        
-        h = 500 - (self.upperLeg.body.position[1] + self.upperLeg.body.center_of_gravity[1])
-        
-        
-        #print("gravitational energy", self.upperLeg.body.mass*h*900)
-        
-        gpe = self.upperLeg.body.mass*h*900
-        
-        print("total: ", gpe)
-        
-        constrainJoints = ["knee"]
-                           
-       
-        for joint in constrainJoints:
-            
-            if joint == "knee":
-                jointAngle = self.kneeAngle()
-            elif joint == "pelvis":
-                jointAngle = self.pelvisAngle()
-            
-            #Run constraints if motor driven or disengaged
-            if self.joints[joint]["motor"].rate != 0 or self.joints[joint]["motor"].max_force < 100:
-                #Clockwise rotation
-                if self.joints[joint]["motor"].rate < 0:
-                    #Apply flexion constraint if flexion is clockwise
-                    if self.joints[joint]["flexionDirection"] == 1:
-                        #If flexion constraint reached
-                        if jointAngle > config["jointConstraints"][joint+"Flexion"]:
-                            self.stayStill()
-                            print("Reached clockwise flexion " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle > self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached clockwise flexion " + joint + " target angle of", jointAngle)
-                    #Apply extension constraint if extension is clockwise
-                    else:
-                        #If extension constraint reached
-                        if jointAngle > config["jointConstraints"][joint+"Extension"]:
-                            self.stayStill()
-                            print("Reached clockwise extension " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle > self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached clockwise extension " + joint + " target angle of", jointAngle)            
-                #Anticlockwise rotation            
-                elif self.joints[joint]["motor"].rate > 0:
-                    #Apply flexion constraint if flexion is clockwise
-                    if self.joints[joint]["flexionDirection"] == -1:
-                        #If flexion constraint reached
-                        if jointAngle < config["jointConstraints"][joint+"Flexion"]:
-                            self.stayStill()
-                            print("Reached anticlockwise flexion " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle < self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached anticlockwise flexion " + joint + " target angle of", jointAngle)
-                    #Apply extension constraint if extension is clockwise
-                    else:
-                        #If extension constraint reached
-                        if jointAngle < config["jointConstraints"][joint+"Extension"]:
-                            self.stayStill()
-                            print("Reached anticlockwise extension " + joint + " constraint angle of", jointAngle)
-                        #If target angle reached
-                        elif self.joints[joint]["targetAngle"] is not None and jointAngle < self.joints[joint]["targetAngle"]:
-                            self.stayStill()
-                            print("Reached anticlockwise extension " + joint + " target angle of", jointAngle, self.joints[joint]["targetAngle"])
+        #Run constraints if motor driven or disengaged
+        if self.joints["knee"]["motor"].rate != 0 or self.joints["knee"]["motor"].max_force < 100:
+    
+            #Clockwise rotation
+            if self.joints["knee"]["motor"].rate < 0:
+                #Apply extension constraint 
+               
+                if kneeAngle > config["jointConstraints"]["kneeExtension"]:
+                    self.stayStill()
+                    print("Reached clockwise extension knee constraint angle of", kneeAngle)
+                #If target angle reached
+                elif self.joints["knee"]["targetAngle"] is not None and kneeAngle > self.joints["knee"]["targetAngle"]:
+                    self.stayStill()
+                    print("Reached clockwise extension knee target angle of", kneeAngle)       
+                elif self.config["environmentConfig"]["constrainCOM"] and self.torso.body.position[0] > self.getJointByNumber(self.hand_index).position[0]:
+                    print("torso reached COM")
+                    self.stayStill()
+            #Anticlockwise rotation            
+            elif self.joints["knee"]["motor"].rate > 0:
+                #Apply flexion constraint 
                 
-                        
+                if kneeAngle < config["jointConstraints"]["kneeFlexion"]:
+                    self.stayStill()
+                    print("Reached anticlockwise flexion knee constraint angle of", kneeAngle)
+                #If target angle reached
+                elif self.joints["knee"]["targetAngle"] is not None and kneeAngle < self.joints["knee"]["targetAngle"]:
+                    self.stayStill()
+                    print("Reached anticlockwise flexion knee target angle of", kneeAngle)
+                    
+        
     
     def kneeAngle(self):
         
@@ -906,6 +867,7 @@ np.savetxt('plotdata', (t, angs, angvels), delimiter=',')
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
 
+#Save stickman Data
 dataDict  = {'TotalEnergy': Application.dataArray}
 
 df = pd.DataFrame(Application.dataArray, columns=["total_energy"])
