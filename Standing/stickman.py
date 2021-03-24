@@ -42,6 +42,9 @@ steps = 10
 timestep = 1/fps/steps
 
 
+
+
+
 BLACK = (0, 0, 0)
 GRAY = (220, 220, 220)
 WHITE = (255, 255, 255)
@@ -147,7 +150,13 @@ class App:
         self.timestep_array = [0] # array of timesteps
         self.theta = [pivot_ang] # array of pivot angles
         self.thetadot = [0] # array of pivot angular velocities
+        self.dataArray  = []
         
+        
+        
+   
+     
+    
         
         
     def run(self):
@@ -278,8 +287,9 @@ class App:
         self.angles["pelvis"] = self.stickFigure.pelvisAngle()
         self.angles["knee"] = self.stickFigure.kneeAngle()
         
-                
+        self.dataArray = np.append(self.dataArray, self.stickFigure.calculateTotalEnergy())    
         
+
         
         dangles = {key: self.angles[key] - prev_angles[key] for key in self.angles} 
         self.ang_vel = {key: dangles[key]/dt for key in dangles}
@@ -394,7 +404,7 @@ class Stickman:
         hand_index = 1
         self.hand_index, self.foot_index = hand_index, foot_index
         self.footPosition = self.swing['rod'][foot_index].position + self.botVec
-        
+    
         #Generate lower leg and knee
         self.lowerLegVector = self.dirVec("lowerLeg")
         self.lowerLeg = Segment(self.footPosition, self.lowerLegVector, self.limbMass("lowerLeg"))
@@ -680,13 +690,13 @@ class Stickman:
             #Calculate kinetic energy
             totalEnergy += self.limbs[limb].body.kinetic_energy
             
-        for joint in self.swing.keys():
-            h= self.config["environmentConfig"]["screenSize"][1] - (self.swing[joint].position[1] + self.swing[joint].center_of_gravity[1])
-            gpe = self.swing[joint].mass*h*self.config["environmentConfig"]["gravity"][1]
+        for segment in self.swing["rod"]:
+            h= self.config["environmentConfig"]["screenSize"][1] - (segment.position[1] + segment.center_of_gravity[1])
+            gpe = segment.mass*h*self.config["environmentConfig"]["gravity"][1]
             totalEnergy += gpe
             
             #Calculate kinetic energy
-            totalEnergy += self.swing[joint].kinetic_energy
+            totalEnergy += segment.kinetic_energy
             
         return totalEnergy
 
@@ -890,10 +900,19 @@ Application.run()
 t = Application.timestep_array
 angs = Application.theta
 angvels = Application.thetadot
+
 np.savetxt('plotdata', (t, angs, angvels), delimiter=',')
 
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
+
+dataDict  = {'TotalEnergy': Application.dataArray}
+
+df = pd.DataFrame(Application.dataArray, columns=["total_energy"])
+
+print(Application.dataArray)
+#print(data)
+df.to_csv ("StickmanData.csv", index = False, header=True)
 
 plt.plot(data)
 

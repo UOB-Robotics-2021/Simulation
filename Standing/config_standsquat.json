@@ -6,7 +6,8 @@
     "ragdollEnabled": false,
     "motorUsingTargetAngle": true,
     "constrainJointAngles": true,
-    "automatedPumping": true
+    "automatedPumping": true,
+    "screenSize": [600,500]
     
   },
   "LswingConfig":{
