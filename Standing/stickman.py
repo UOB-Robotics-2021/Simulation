@@ -165,7 +165,7 @@ class App:
             for i in range(steps):
                 space.step(1/fps/steps)
             self.update_state()
-            self.save_anlge()
+            self.save_angle()
         
         #Exit simulation
         pygame.quit()
@@ -287,7 +287,7 @@ class App:
         self.ang_acc = {key: dv[key]/dt for key in dv}
         
         
-    def save_anlge(self):
+    def save_angle(self):
         '''Updates the arrays of timesteps, angles and angular velocities'''
         self.current_timestep += 1/fps
         self.timestep_array.append(self.current_timestep)
@@ -859,41 +859,7 @@ class Stickman:
         angle = angle + offset
         
         return angle
-    
-    def kneeAngle(self):
-        
-        #upperLegVector = self.torso.body.position - self.upperLeg.body.position
-        upperLegVector = self.torso.body.position - self.upperLeg.body.position
-        lowerLegVector = self.upperLeg.body.position - self.lowerLeg.body.position
-        
-        
-        v0  = upperLegVector / np.linalg.norm(upperLegVector)
-        v1 = lowerLegVector / np.linalg.norm(lowerLegVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        #Angles defined so 0 is at 12 and 180 is at 6
-        if self.torso.body.position[0] < self.upperLeg.body.position[0]:
-            angle = -angle    
-      
-        
-        return angle
-    
-    def pelvisAngle(self):
-   
-        torsoVector = self.upperArm.body.position - self.torso.body.position
-        upperLegVector = self.torso.body.position - self.upperLeg.body.position
 
-        v0  = torsoVector / np.linalg.norm(torsoVector)
-        v1 = upperLegVector / np.linalg.norm(upperLegVector)
-        dot_product = np.dot(v0, v1)
-        angle = math.degrees(np.arccos(dot_product))
-        
-        #Angles defined so 0 is at 12 and 180 is at 6
-        if self.upperArm.body.position[0] < self.torso.body.position[0]:
-            angle = -angle
-        
-        return angle
 
 angle = 45
 
@@ -907,7 +873,7 @@ Application.run()
 t = Application.timestep_array
 angs = Application.theta
 angvels = Application.thetadot
-np.savetxt('plotdata', (t, angs, angvels), delimiter=',')
+np.savetxt('plotdata.txt', (t, angs, angvels), delimiter=',')
 
 data = pd.DataFrame(data, columns=['tick', 'vx', 'vy'])
 data.to_csv('data.csv')
