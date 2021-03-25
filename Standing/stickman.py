@@ -105,6 +105,7 @@ class App:
         self.images = []
         self.stickFigure = stickFigure
         self.swing = self.stickFigure.swing
+        self.iteration = 0
         
         #pivot angle
         v_p = self.stickFigure.getJointByNumber(1).position - self.stickFigure.getJointByNumber(0).position
@@ -150,7 +151,7 @@ class App:
         self.timestep_array = [0] # array of timesteps
         self.theta = [pivot_ang] # array of pivot angles
         self.thetadot = [0] # array of pivot angular velocities
-        self.dataArray  = []
+        
         
         
         
@@ -181,6 +182,8 @@ class App:
                 space.step(1/fps/steps)
             self.update_state()
             self.save_angle()
+            
+            self.iteration+=1 
         
         #Exit simulation
         pygame.quit()
@@ -283,10 +286,18 @@ class App:
         self.angles["pelvis"] = self.stickFigure.pelvisAngle()
         self.angles["knee"] = self.stickFigure.kneeAngle()
         
-        self.dataArray = np.append(self.dataArray, self.angles["pivot"])    
         
-
+        iterationData = np.array([self.angles["pivot"],
+                         self.stickFigure.calculateTotalEnergy(),
+                         self.stickFigure.calculateSwingLength()
+                        ])
         
+    
+        if self.iteration == 0: #Create dataArray
+            self.dataArray = [iterationData]
+        else: #Add array of iteration data to dataArray
+            self.dataArray = np.vstack([self.dataArray, iterationData])
+            
         dangles = {key: self.angles[key] - prev_angles[key] for key in self.angles} 
         self.ang_vel = {key: dangles[key]/dt for key in dangles}
         
@@ -373,7 +384,7 @@ class Stickman:
         r = (self.config["swingConfig"]["jointDistances"][0]/2)
         w = v / r
         # Apply force in opposite direction of velocity, proportional to the magnitude of the velocity
-        f_coeff = 160e+3
+        f_coeff = 120e+3
         f = -w * f_coeff
         pos = (self.getJointByNumber(1).position - self.getJointByNumber(0).position)/2
         self.getJointByNumber(0).apply_force_at_local_point(f, pos)
@@ -496,6 +507,7 @@ class Stickman:
 
     def vectorSum(self, v1, v2):
         return [(v1[0]+v2[0]), (v1[1]+v2[1])]
+
     
     
     def moveStickman(self, moveJoints):
@@ -695,6 +707,9 @@ class Stickman:
             totalEnergy += segment.kinetic_energy
             
         return totalEnergy
+    
+    def calculateSwingLength(self):
+        return (self.torso.body.position[1] - self.swing["top"][0].position[1])
 
     def applyConstraints(self):
         """
@@ -833,7 +848,7 @@ class Stickman:
         return angle
   
 
-angle = 30
+angle = 25
 
 man = Stickman(space=space, config=config, scale=0.8, lean=0, theta=angle)
 
@@ -853,8 +868,8 @@ data.to_csv('data.csv')
 
 #Save stickman Data
 dataDict  = {'Friction': Application.dataArray}
-
-df = pd.DataFrame(Application.dataArray, columns=["Angle"])
+print(Application.dataArray)
+df = pd.DataFrame(Application.dataArray, columns=["Angle", "kineticEnergy", "swingLength"])
 
 print(Application.dataArray)
 #print(data)
